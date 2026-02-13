@@ -8,3 +8,5 @@ export { default as compact } from './compact.js';
 export { default as 'upsert-node' } from './upsert-node.js';
 export { default as 'policy-check' } from './policy-check.js';
 export { default as 'api start' } from './api/start.js';
+export { default as 'embed-model warmup' } from './embed-model/warmup.js';
+export { default as 'embed-model info' } from './embed-model/info.js';

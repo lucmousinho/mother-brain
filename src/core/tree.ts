@@ -7,6 +7,7 @@ import { generateNodeId } from '../utils/ids.js';
 import { nodeToMarkdown } from '../utils/markdown.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
+import { indexNodeVector } from './vectorIndex.js';
 
 export interface UpsertResult {
   node_id: string;
@@ -58,6 +59,11 @@ export async function upsertNode(
       md,
       JSON.stringify(parsed),
     );
+  });
+
+  // Index in vector store (non-blocking, best-effort)
+  indexNodeVector(parsed).catch(() => {
+    // Vector indexing failure must never break node upsert
   });
 
   return {

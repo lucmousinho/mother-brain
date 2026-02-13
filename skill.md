@@ -94,10 +94,11 @@ Query parameters:
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
-| `q`       | Yes      | Search query (keywords) |
+| `q`       | Yes      | Search query (keywords or natural language) |
 | `limit`   | No       | Max results (default: 10) |
 | `tags`    | No       | Comma-separated tag filter |
 | `types`   | No       | Comma-separated node type filter (task, decision, pattern, constraint, playbook, project, goal, agent) |
+| `mode`    | No       | Recall mode: `keyword` (default), `semantic`, or `hybrid` |
 
 Response:
 
@@ -142,6 +143,13 @@ Response:
 - Read `suggested_next_actions` for guidance
 - Reference `top_runs` to avoid repeating work
 - Link your checkpoint to relevant `top_nodes`
+- Use `similarity_score` (when available) to gauge semantic relevance — higher is better (0-1 scale)
+
+**Semantic recall tips:**
+- Use `mode=semantic` for natural language queries (e.g. "how did we handle authentication")
+- Use `mode=hybrid` for best results — combines keyword precision with semantic understanding
+- The response includes `source` field indicating which engine produced results (`keyword`, `vector`, or `hybrid`)
+- If the embedding model is not loaded, semantic/hybrid automatically falls back to keyword mode
 
 ### Step 2 — Check Policy
 

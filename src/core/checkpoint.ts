@@ -6,6 +6,7 @@ import { getCheckpointsDir, getLinksDir } from '../utils/paths.js';
 import { generateRunId } from '../utils/ids.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
+import { indexRunVector } from './vectorIndex.js';
 
 export interface RecordResult {
   run_id: string;
@@ -71,6 +72,11 @@ export async function recordCheckpoint(
         'utf-8',
       );
     }
+  });
+
+  // Index in vector store (non-blocking, best-effort)
+  indexRunVector(parsed).catch(() => {
+    // Vector indexing failure must never break checkpoint recording
   });
 
   return {

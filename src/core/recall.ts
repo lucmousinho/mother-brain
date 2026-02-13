@@ -1,9 +1,16 @@
 import type Database from 'better-sqlite3';
 import type { KnowledgeNode } from './schemas.js';
 import { getDb } from '../db/database.js';
+import type { VectorSearchResult } from './vectorstore/vector.types.js';
+
+// ── Types ───────────────────────────────────────────────────────────
+
+export type RecallMode = 'keyword' | 'semantic' | 'hybrid';
 
 export interface RecallResult {
   query: string;
+  mode: RecallMode;
+  source: 'keyword' | 'vector' | 'hybrid';
   top_runs: RunSummary[];
   top_nodes: NodeSummary[];
   applicable_constraints: string[];
@@ -18,6 +25,7 @@ export interface RunSummary {
   summary: string;
   status: string;
   score: number;
+  similarity_score?: number;
 }
 
 export interface NodeSummary {
@@ -27,14 +35,63 @@ export interface NodeSummary {
   status: string;
   tags: string[];
   score: number;
+  similarity_score?: number;
 }
 
-export function recall(
+// ── Main entry point ────────────────────────────────────────────────
+
+export async function recall(
   query: string,
   limit: number = 10,
   tags?: string[],
   nodeTypes?: string[],
   db?: Database.Database,
+  mode?: RecallMode,
+): Promise<RecallResult> {
+  const resolvedMode = mode ?? getDefaultMode();
+
+  // Attempt semantic/hybrid first, fall back to keyword on failure
+  if (resolvedMode === 'semantic') {
+    try {
+      return await semanticRecall(query, limit, tags, nodeTypes, db);
+    } catch {
+      // Fallback to keyword
+      return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+    }
+  }
+
+  if (resolvedMode === 'hybrid') {
+    try {
+      return await hybridRecall(query, limit, tags, nodeTypes, db);
+    } catch {
+      // Fallback to keyword
+      return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+    }
+  }
+
+  return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+}
+
+/** Synchronous keyword-only recall — preserves original behaviour. */
+export function recallKeyword(
+  query: string,
+  limit: number = 10,
+  tags?: string[],
+  nodeTypes?: string[],
+  db?: Database.Database,
+): RecallResult {
+  return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+}
+
+// ── Keyword mode (original logic, untouched) ────────────────────────
+
+function keywordRecall(
+  query: string,
+  limit: number,
+  tags?: string[],
+  nodeTypes?: string[],
+  db?: Database.Database,
+  source: RecallResult['source'] = 'keyword',
 ): RecallResult {
   const database = db || getDb();
   const keywords = query
@@ -42,7 +99,7 @@ export function recall(
     .split(/\s+/)
     .filter((w) => w.length > 1);
 
-  // ── Search runs ────────────────────────────────────────────────
+  // ── Search runs ──────────────────────────────────────────────
   const allRuns = database
     .prepare(
       `SELECT run_id, timestamp, agent_id, goal, summary, status, tags_json, raw_json
@@ -65,20 +122,17 @@ export function recall(
       const searchText = `${row.goal} ${row.summary} ${row.agent_id}`.toLowerCase();
       const runTags: string[] = JSON.parse(row.tags_json);
 
-      // Keyword matching
       for (const kw of keywords) {
         if (searchText.includes(kw)) score += 2;
         if (row.run_id.includes(kw)) score += 3;
       }
 
-      // Tag matching
       if (tags) {
         for (const t of tags) {
           if (runTags.includes(t)) score += 3;
         }
       }
 
-      // Recency boost (last 24h = +2, last week = +1)
       const age = Date.now() - new Date(row.timestamp).getTime();
       if (age < 86_400_000) score += 2;
       else if (age < 604_800_000) score += 1;
@@ -97,7 +151,7 @@ export function recall(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  // ── Search nodes ───────────────────────────────────────────────
+  // ── Search nodes ─────────────────────────────────────────────
   let nodesSql = `SELECT node_id, type, title, status, tags_json, raw_json FROM nodes WHERE 1=1`;
   const nodeParams: string[] = [];
 
@@ -134,7 +188,6 @@ export function recall(
         }
       }
 
-      // Active nodes get a boost
       if (row.status === 'active') score += 1;
 
       return {
@@ -150,7 +203,142 @@ export function recall(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  // ── Gather constraints ─────────────────────────────────────────
+  // ── Constraints + next actions ───────────────────────────────
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+
+  return {
+    query,
+    mode: 'keyword',
+    source,
+    top_runs: scoredRuns,
+    top_nodes: scoredNodes,
+    applicable_constraints,
+    suggested_next_actions,
+  };
+}
+
+// ── Semantic mode (vector-only) ─────────────────────────────────────
+
+async function semanticRecall(
+  query: string,
+  limit: number,
+  _tags?: string[],
+  _nodeTypes?: string[],
+  db?: Database.Database,
+): Promise<RecallResult> {
+  const { embedText } = await import('./embeddings/embeddings.local.js');
+  const { semanticSearch } = await import('./vectorstore/lancedb.store.js');
+
+  const queryVec = await embedText(query);
+  const topK = parseInt(process.env.MB_VECTOR_TOP_K || String(limit), 10);
+  const results = await semanticSearch(queryVec, topK * 2);
+
+  const runs = vectorResultsToRuns(results.filter((r) => r.kind === 'run'), limit);
+  const nodes = vectorResultsToNodes(results.filter((r) => r.kind === 'node'), limit);
+
+  const database = db || getDb();
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+
+  return {
+    query,
+    mode: 'semantic',
+    source: 'vector',
+    top_runs: runs,
+    top_nodes: nodes,
+    applicable_constraints,
+    suggested_next_actions,
+  };
+}
+
+// ── Hybrid mode (vector + keyword rerank) ───────────────────────────
+
+async function hybridRecall(
+  query: string,
+  limit: number,
+  tags?: string[],
+  nodeTypes?: string[],
+  db?: Database.Database,
+): Promise<RecallResult> {
+  // Get both keyword and semantic results
+  const kwResult = keywordRecall(query, limit * 2, tags, nodeTypes, db, 'hybrid');
+
+  const { embedText } = await import('./embeddings/embeddings.local.js');
+  const { semanticSearch } = await import('./vectorstore/lancedb.store.js');
+
+  const queryVec = await embedText(query);
+  const topK = parseInt(process.env.MB_VECTOR_TOP_K || String(limit), 10);
+  const vecResults = await semanticSearch(queryVec, topK * 2);
+
+  // Merge runs: combine keyword scores with similarity scores
+  const runMap = new Map<string, RunSummary>();
+
+  for (const r of kwResult.top_runs) {
+    runMap.set(r.run_id, { ...r });
+  }
+
+  for (const vr of vecResults.filter((r) => r.kind === 'run')) {
+    const existing = runMap.get(vr.ref_id);
+    if (existing) {
+      // Boost existing keyword match with similarity
+      existing.score += Math.round(vr.similarity_score * 10);
+      existing.similarity_score = vr.similarity_score;
+    } else {
+      // Add vector-only result with estimated score
+      runMap.set(vr.ref_id, vectorRunToSummary(vr));
+    }
+  }
+
+  const mergedRuns = Array.from(runMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  // Merge nodes
+  const nodeMap = new Map<string, NodeSummary>();
+
+  for (const n of kwResult.top_nodes) {
+    nodeMap.set(n.node_id, { ...n });
+  }
+
+  for (const vr of vecResults.filter((r) => r.kind === 'node')) {
+    const existing = nodeMap.get(vr.ref_id);
+    if (existing) {
+      existing.score += Math.round(vr.similarity_score * 10);
+      existing.similarity_score = vr.similarity_score;
+    } else {
+      nodeMap.set(vr.ref_id, vectorNodeToSummary(vr));
+    }
+  }
+
+  const mergedNodes = Array.from(nodeMap.values())
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  const database = db || getDb();
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+
+  return {
+    query,
+    mode: 'hybrid',
+    source: 'hybrid',
+    top_runs: mergedRuns,
+    top_nodes: mergedNodes,
+    applicable_constraints,
+    suggested_next_actions,
+  };
+}
+
+// ── Shared helpers ──────────────────────────────────────────────────
+
+function getDefaultMode(): RecallMode {
+  const env = process.env.MB_RECALL_MODE;
+  if (env === 'semantic' || env === 'hybrid' || env === 'keyword') return env;
+  return 'keyword';
+}
+
+function gatherMeta(database: Database.Database): {
+  applicable_constraints: string[];
+  suggested_next_actions: string[];
+} {
   const constraintNodes = database
     .prepare(`SELECT raw_json FROM nodes WHERE type = 'constraint' AND status = 'active'`)
     .all() as { raw_json: string }[];
@@ -160,7 +348,6 @@ export function recall(
     return `[${node.id}] ${node.title}`;
   });
 
-  // ── Gather suggested next actions ──────────────────────────────
   const suggested_next_actions: string[] = [];
   const activeTaskNodes = database
     .prepare(
@@ -176,24 +363,65 @@ export function recall(
   }
 
   return {
-    query,
-    top_runs: scoredRuns,
-    top_nodes: scoredNodes,
     applicable_constraints,
     suggested_next_actions: suggested_next_actions.slice(0, 20),
   };
 }
 
+function vectorResultsToRuns(results: VectorSearchResult[], limit: number): RunSummary[] {
+  return results.slice(0, limit).map((r) => vectorRunToSummary(r));
+}
+
+function vectorRunToSummary(r: VectorSearchResult): RunSummary {
+  return {
+    run_id: r.ref_id,
+    timestamp: r.updated_at,
+    agent_id: '',
+    goal: r.text.slice(0, 200),
+    summary: '',
+    status: r.status,
+    score: Math.round(r.similarity_score * 10),
+    similarity_score: r.similarity_score,
+  };
+}
+
+function vectorResultsToNodes(results: VectorSearchResult[], limit: number): NodeSummary[] {
+  return results.slice(0, limit).map((r) => vectorNodeToSummary(r));
+}
+
+function vectorNodeToSummary(r: VectorSearchResult): NodeSummary {
+  const tags: string[] = (() => {
+    try {
+      return JSON.parse(r.tags_json) as string[];
+    } catch {
+      return [];
+    }
+  })();
+
+  return {
+    node_id: r.ref_id,
+    type: r.type,
+    title: r.text.slice(0, 200),
+    status: r.status,
+    tags,
+    score: Math.round(r.similarity_score * 10),
+    similarity_score: r.similarity_score,
+  };
+}
+
+// ── Markdown formatter ──────────────────────────────────────────────
+
 export function formatRecallMarkdown(result: RecallResult): string {
   const lines: string[] = [];
-  lines.push(`# Recall: "${result.query}"\n`);
+  lines.push(`# Recall: "${result.query}" [${result.mode}/${result.source}]\n`);
 
   lines.push(`## Top Runs (${result.top_runs.length})\n`);
   if (result.top_runs.length === 0) {
     lines.push('_No matching runs found._\n');
   } else {
     for (const r of result.top_runs) {
-      lines.push(`- **${r.run_id}** [${r.status}] score=${r.score}`);
+      const sim = r.similarity_score !== undefined ? ` sim=${r.similarity_score.toFixed(3)}` : '';
+      lines.push(`- **${r.run_id}** [${r.status}] score=${r.score}${sim}`);
       lines.push(`  Goal: ${r.goal}`);
       lines.push(`  Summary: ${r.summary}`);
       lines.push('');
@@ -205,7 +433,8 @@ export function formatRecallMarkdown(result: RecallResult): string {
     lines.push('_No matching nodes found._\n');
   } else {
     for (const n of result.top_nodes) {
-      lines.push(`- **${n.node_id}** (${n.type}) [${n.status}] score=${n.score}`);
+      const sim = n.similarity_score !== undefined ? ` sim=${n.similarity_score.toFixed(3)}` : '';
+      lines.push(`- **${n.node_id}** (${n.type}) [${n.status}] score=${n.score}${sim}`);
       lines.push(`  ${n.title}`);
       lines.push('');
     }

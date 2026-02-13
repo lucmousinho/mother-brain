@@ -1,0 +1,54 @@
+{
+  "query": "how did we handle the deploy failure",
+  "mode": "semantic",
+  "source": "vector",
+  "top_runs": [
+    {
+      "run_id": "run_01jexample123",
+      "timestamp": "2025-01-15T10:10:00Z",
+      "agent_id": "",
+      "goal": "Deploy staging environment and handle rollback on failure",
+      "summary": "",
+      "status": "success",
+      "score": 9,
+      "similarity_score": 0.874
+    },
+    {
+      "run_id": "run_01jexample456",
+      "timestamp": "2025-01-14T14:30:00Z",
+      "agent_id": "",
+      "goal": "Investigate and fix production deploy timeout",
+      "summary": "",
+      "status": "partial",
+      "score": 8,
+      "similarity_score": 0.821
+    }
+  ],
+  "top_nodes": [
+    {
+      "node_id": "pattern_deploy_rollback",
+      "type": "pattern",
+      "title": "Deploy rollback procedure when health checks fail",
+      "status": "active",
+      "tags": ["deploy", "rollback", "infra"],
+      "score": 9,
+      "similarity_score": 0.892
+    },
+    {
+      "node_id": "decision_blue_green",
+      "type": "decision",
+      "title": "Use blue-green deployment strategy for staging",
+      "status": "active",
+      "tags": ["deploy", "staging", "architecture"],
+      "score": 7,
+      "similarity_score": 0.756
+    }
+  ],
+  "applicable_constraints": [
+    "[constraint_no_prod_deploy] No production deploys without approval"
+  ],
+  "suggested_next_actions": [
+    "[task_staging_health] Verify staging health checks after deploy",
+    "[task_staging_tests] Run integration tests on staging"
+  ]
+}

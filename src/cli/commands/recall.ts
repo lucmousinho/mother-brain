@@ -1,15 +1,17 @@
 import { Command, Args, Flags } from '@oclif/core';
 import { isInitialized } from '../../utils/paths.js';
-import { recall, formatRecallMarkdown } from '../../core/recall.js';
+import { recall, formatRecallMarkdown, type RecallMode } from '../../core/recall.js';
 
 export default class Recall extends Command {
   static override description =
-    'Hybrid recall: search runs and nodes by keyword, tags, and recency.';
+    'Hybrid recall: search runs and nodes by keyword, semantic similarity, or both.';
 
   static override examples = [
     '$ motherbrain recall "deploy"',
     '$ motherbrain recall "auth bug" --format md',
     '$ motherbrain recall "refactor" --limit 5 --tags backend',
+    '$ motherbrain recall "deploy staging" --mode semantic',
+    '$ motherbrain recall "auth" --mode hybrid',
   ];
 
   static override args = {
@@ -36,6 +38,11 @@ export default class Recall extends Command {
     types: Flags.string({
       description: 'Comma-separated node types to filter by',
     }),
+    mode: Flags.string({
+      char: 'm',
+      description: 'Recall mode',
+      options: ['keyword', 'semantic', 'hybrid'],
+    }),
   };
 
   async run(): Promise<void> {
@@ -47,8 +54,9 @@ export default class Recall extends Command {
 
     const tags = flags.tags ? flags.tags.split(',').map((t) => t.trim()) : undefined;
     const nodeTypes = flags.types ? flags.types.split(',').map((t) => t.trim()) : undefined;
+    const mode = (flags.mode as RecallMode) ?? undefined;
 
-    const result = recall(args.query, flags.limit, tags, nodeTypes);
+    const result = await recall(args.query, flags.limit, tags, nodeTypes, undefined, mode);
 
     if (flags.format === 'md') {
       this.log(formatRecallMarkdown(result));

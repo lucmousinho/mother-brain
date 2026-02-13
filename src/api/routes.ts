@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { recordCheckpoint } from '../core/checkpoint.js';
 import { upsertNode } from '../core/tree.js';
-import { recall } from '../core/recall.js';
+import { recall, type RecallMode } from '../core/recall.js';
 import { policyCheck } from '../core/policy.js';
 import { PolicyCheckSchema } from '../core/schemas.js';
 import { ZodError } from 'zod';
@@ -43,22 +43,22 @@ export function registerRoutes(app: FastifyInstance): void {
   });
 
   // ── Recall ─────────────────────────────────────────────────────
-  app.get<{ Querystring: { q?: string; limit?: string; tags?: string; types?: string } }>(
-    '/recall',
-    async (request, reply) => {
-      const q = request.query.q;
-      if (!q) {
-        return reply.code(400).send({ error: 'Query parameter "q" is required' });
-      }
+  app.get<{
+    Querystring: { q?: string; limit?: string; tags?: string; types?: string; mode?: string };
+  }>('/recall', async (request, reply) => {
+    const q = request.query.q;
+    if (!q) {
+      return reply.code(400).send({ error: 'Query parameter "q" is required' });
+    }
 
-      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 10;
-      const tags = request.query.tags ? request.query.tags.split(',') : undefined;
-      const nodeTypes = request.query.types ? request.query.types.split(',') : undefined;
+    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 10;
+    const tags = request.query.tags ? request.query.tags.split(',') : undefined;
+    const nodeTypes = request.query.types ? request.query.types.split(',') : undefined;
+    const mode = validateMode(request.query.mode);
 
-      const result = recall(q, limit, tags, nodeTypes);
-      return result;
-    },
-  );
+    const result = await recall(q, limit, tags, nodeTypes, undefined, mode);
+    return result;
+  });
 
   // ── Policy Check ───────────────────────────────────────────────
   app.post('/policy/check', async (request, reply) => {
@@ -74,4 +74,9 @@ export function registerRoutes(app: FastifyInstance): void {
       throw err;
     }
   });
+}
+
+function validateMode(mode?: string): RecallMode | undefined {
+  if (mode === 'keyword' || mode === 'semantic' || mode === 'hybrid') return mode;
+  return undefined;
 }

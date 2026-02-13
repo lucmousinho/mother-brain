@@ -1,0 +1,8 @@
+{
+  "description": "Example semantic recall request via API",
+  "request": {
+    "method": "GET",
+    "url": "http://127.0.0.1:7337/recall?q=how+did+we+handle+the+deploy+failure&mode=semantic&limit=5"
+  },
+  "cli_equivalent": "motherbrain recall \"how did we handle the deploy failure\" --mode semantic --limit 5"
+}
