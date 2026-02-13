@@ -30,23 +30,47 @@ Daily compaction reads all checkpoints for a given day and produces patterns/dec
 
 ## Installation
 
+### One-liner (recommended)
+
 ```bash
-# Clone the repo
-git clone <repo-url> mother-brain && cd mother-brain
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+```
 
-# Install dependencies
+This downloads the latest prebuilt binary for your OS/arch, verifies the SHA-256 checksum, and installs it to `/usr/local/bin` (or `~/.local/bin` if no sudo).
+
+**Variants:**
+
+```bash
+# Install a specific version
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --version v0.2.0
+
+# Review the script before running (recommended for security-conscious users)
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh -o install.sh
+less install.sh
+bash install.sh
+
+# Custom install directory
+MB_INSTALL_DIR=~/bin curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+```
+
+### Uninstall
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/uninstall.sh | bash
+```
+
+### From source (for development)
+
+```bash
+git clone https://github.com/lucmousinho/mother-brain.git && cd mother-brain
 pnpm install
-
-# Build
 pnpm build
-
-# (Optional) Link the CLI globally
-pnpm link --global
+node --no-warnings bin/run.js --help
 ```
 
 ### Requirements
-- Node.js >= 20
-- pnpm (or npm)
+- **Binary install:** bash, curl, tar (no Node.js needed — runtime is bundled)
+- **From source:** Node.js >= 20, pnpm
 
 ---
 

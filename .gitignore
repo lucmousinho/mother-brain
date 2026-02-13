@@ -34,6 +34,10 @@ motherbrain/tree/*/pattern_*
 motherbrain/tree/*/task_*
 motherbrain/VERSION
 
+# Release / pack artifacts
+release/
+.pack-stage/
+
 # Temp / test artifacts
 .test-*
 *.tsbuildinfo
