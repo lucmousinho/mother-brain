@@ -1,8 +1,20 @@
-# Mother Brain
+<p align="center">
+  <img src="assets/logo.svg" alt="Mother Brain" width="600" />
+</p>
 
-**CLI + local API for agent run checkpoints, knowledge tree, hybrid recall, and policy gate.**
+<p align="center">
+  <strong>CLI + local API for agent run checkpoints, knowledge tree, hybrid recall, and policy gate.</strong><br/>
+  Capture, organize, and recall context across multiple AI agents — all running offline and locally.
+</p>
 
-Mother Brain provides a unified system to capture, organize, and recall context across multiple AI agents — all running offline and locally.
+<p align="center">
+  <a href="#installation">Installation</a> &middot;
+  <a href="#setup">Setup</a> &middot;
+  <a href="#connect-your-ai-agent">Connect Agent</a> &middot;
+  <a href="#semantic-recall-offline">Semantic Recall</a> &middot;
+  <a href="#cli-commands">CLI</a> &middot;
+  <a href="#api-endpoints">API</a>
+</p>
 
 ---
 
