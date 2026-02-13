@@ -9,85 +9,87 @@
       <stop offset="50%" stop-color="#a29bfe"/>
       <stop offset="100%" stop-color="#00CEC9"/>
     </linearGradient>
-    <filter id="soft">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5"/>
-    </filter>
   </defs>
 
-  <!-- ── Brain icon ─────────────────────────────────── -->
-  <g transform="translate(80,130)">
-    <!-- Outer ring -->
-    <circle cx="0" cy="0" r="90" stroke="url(#glow)" stroke-width="3" fill="none" opacity="0.25"/>
-    <circle cx="0" cy="0" r="105" stroke="url(#glow)" stroke-width="1.5" fill="none" opacity="0.10"/>
+  <!-- Center wrapper: shifts all content +145px right to center in 800-wide viewBox -->
+  <g transform="translate(145,0)">
 
-    <!-- Neural network nodes (outer ring) -->
-    <circle cx="0"   cy="-72" r="6" fill="url(#glow)" opacity="0.9"/>
-    <circle cx="62"   cy="-36" r="5" fill="url(#glow)" opacity="0.7"/>
-    <circle cx="62"   cy="36"  r="5" fill="url(#glow)" opacity="0.7"/>
-    <circle cx="0"   cy="72"  r="6" fill="url(#glow)" opacity="0.9"/>
-    <circle cx="-62"  cy="36"  r="5" fill="url(#glow)" opacity="0.7"/>
-    <circle cx="-62"  cy="-36" r="5" fill="url(#glow)" opacity="0.7"/>
+    <!-- ── Brain icon ─────────────────────────────────── -->
+    <g transform="translate(80,130)">
+      <!-- Outer ring -->
+      <circle cx="0" cy="0" r="90" stroke="url(#glow)" stroke-width="3" fill="none" opacity="0.25"/>
+      <circle cx="0" cy="0" r="105" stroke="url(#glow)" stroke-width="1.5" fill="none" opacity="0.10"/>
 
-    <!-- Neural connections (outer to inner) -->
-    <line x1="0"   y1="-72" x2="20"  y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="0"   y1="-72" x2="-20" y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="62"  y1="-36" x2="20"  y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="62"  y1="-36" x2="30"  y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="62"  y1="36"  x2="30"  y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="62"  y1="36"  x2="15"  y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="0"   y1="72"  x2="15"  y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="0"   y1="72"  x2="-15" y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="-62" y1="36"  x2="-15" y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="-62" y1="36"  x2="-30" y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="-62" y1="-36" x2="-30" y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
-    <line x1="-62" y1="-36" x2="-20" y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <!-- Neural network nodes (outer ring) -->
+      <circle cx="0"   cy="-72" r="6" fill="url(#glow)" opacity="0.9"/>
+      <circle cx="62"  cy="-36" r="5" fill="url(#glow)" opacity="0.7"/>
+      <circle cx="62"  cy="36"  r="5" fill="url(#glow)" opacity="0.7"/>
+      <circle cx="0"   cy="72"  r="6" fill="url(#glow)" opacity="0.9"/>
+      <circle cx="-62" cy="36"  r="5" fill="url(#glow)" opacity="0.7"/>
+      <circle cx="-62" cy="-36" r="5" fill="url(#glow)" opacity="0.7"/>
 
-    <!-- Inner connections (between inner nodes) -->
-    <line x1="20"  y1="-28" x2="30"  y2="8"  stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
-    <line x1="30"  y1="8"   x2="15"  y2="35" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
-    <line x1="15"  y1="35"  x2="-15" y2="35" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
-    <line x1="-15" y1="35"  x2="-30" y2="8"  stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
-    <line x1="-30" y1="8"   x2="-20" y2="-28" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
-    <line x1="-20" y1="-28" x2="20"  y2="-28" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <!-- Neural connections (outer to inner) -->
+      <line x1="0"   y1="-72" x2="20"  y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="0"   y1="-72" x2="-20" y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="62"  y1="-36" x2="20"  y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="62"  y1="-36" x2="30"  y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="62"  y1="36"  x2="30"  y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="62"  y1="36"  x2="15"  y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="0"   y1="72"  x2="15"  y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="0"   y1="72"  x2="-15" y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="-62" y1="36"  x2="-15" y2="35"  stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="-62" y1="36"  x2="-30" y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="-62" y1="-36" x2="-30" y2="8"   stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
+      <line x1="-62" y1="-36" x2="-20" y2="-28" stroke="url(#glow)" stroke-width="1.2" opacity="0.4"/>
 
-    <!-- Cross connections through center -->
-    <line x1="20"  y1="-28" x2="-15" y2="35" stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
-    <line x1="-20" y1="-28" x2="15"  y2="35" stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
-    <line x1="30"  y1="8"   x2="-30" y2="8"  stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
+      <!-- Inner connections (between inner nodes) -->
+      <line x1="20"  y1="-28" x2="30"  y2="8"   stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <line x1="30"  y1="8"   x2="15"  y2="35"  stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <line x1="15"  y1="35"  x2="-15" y2="35"  stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <line x1="-15" y1="35"  x2="-30" y2="8"   stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <line x1="-30" y1="8"   x2="-20" y2="-28" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
+      <line x1="-20" y1="-28" x2="20"  y2="-28" stroke="url(#glow2)" stroke-width="1.5" opacity="0.5"/>
 
-    <!-- Inner network nodes -->
-    <circle cx="20"   cy="-28" r="5" fill="#a29bfe"/>
-    <circle cx="30"   cy="8"   r="4.5" fill="#a29bfe"/>
-    <circle cx="15"   cy="35"  r="4.5" fill="#a29bfe"/>
-    <circle cx="-15"  cy="35"  r="4.5" fill="#a29bfe"/>
-    <circle cx="-30"  cy="8"   r="4.5" fill="#a29bfe"/>
-    <circle cx="-20"  cy="-28" r="5" fill="#a29bfe"/>
+      <!-- Cross connections through center -->
+      <line x1="20"  y1="-28" x2="-15" y2="35"  stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
+      <line x1="-20" y1="-28" x2="15"  y2="35"  stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
+      <line x1="30"  y1="8"   x2="-30" y2="8"   stroke="url(#glow2)" stroke-width="0.8" opacity="0.25"/>
 
-    <!-- Central core -->
-    <circle cx="0" cy="4" r="14" fill="url(#glow)" opacity="0.15"/>
-    <circle cx="0" cy="4" r="9"  fill="url(#glow)"/>
-    <circle cx="0" cy="4" r="4"  fill="#fff" opacity="0.9"/>
+      <!-- Inner network nodes -->
+      <circle cx="20"  cy="-28" r="5"   fill="#a29bfe"/>
+      <circle cx="30"  cy="8"   r="4.5" fill="#a29bfe"/>
+      <circle cx="15"  cy="35"  r="4.5" fill="#a29bfe"/>
+      <circle cx="-15" cy="35"  r="4.5" fill="#a29bfe"/>
+      <circle cx="-30" cy="8"   r="4.5" fill="#a29bfe"/>
+      <circle cx="-20" cy="-28" r="5"   fill="#a29bfe"/>
 
-    <!-- Pulse ring -->
-    <circle cx="0" cy="4" r="22" stroke="url(#glow)" stroke-width="1" fill="none" opacity="0.20">
-      <animate attributeName="r" values="22;30;22" dur="3s" repeatCount="indefinite"/>
-      <animate attributeName="opacity" values="0.20;0.05;0.20" dur="3s" repeatCount="indefinite"/>
-    </circle>
+      <!-- Central core -->
+      <circle cx="0" cy="4" r="14" fill="url(#glow)" opacity="0.15"/>
+      <circle cx="0" cy="4" r="9"  fill="url(#glow)"/>
+      <circle cx="0" cy="4" r="4"  fill="#fff" opacity="0.9"/>
+
+      <!-- Pulse ring -->
+      <circle cx="0" cy="4" r="22" stroke="url(#glow)" stroke-width="1" fill="none" opacity="0.20">
+        <animate attributeName="r" values="22;30;22" dur="3s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.20;0.05;0.20" dur="3s" repeatCount="indefinite"/>
+      </circle>
+    </g>
+
+    <!-- ── Text ───────────────────────────────────────── -->
+    <text x="210" y="118" font-family="'SF Pro Display','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="3" fill="#e2e2e2">
+      MOTHER
+    </text>
+    <text x="210" y="182" font-family="'SF Pro Display','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="3" fill="url(#glow2)">
+      BRAIN
+    </text>
+
+    <!-- Tagline -->
+    <text x="214" y="214" font-family="'SF Mono','Fira Code','Cascadia Code',monospace" font-size="14" letter-spacing="4" fill="#888">
+      OFFLINE AGENT MEMORY
+    </text>
+
+    <!-- Decorative line under tagline -->
+    <line x1="214" y1="226" x2="510" y2="226" stroke="url(#glow)" stroke-width="1" opacity="0.3"/>
+
   </g>
-
-  <!-- ── Text ───────────────────────────────────────── -->
-  <text x="210" y="118" font-family="'SF Pro Display','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="3" fill="#e2e2e2">
-    MOTHER
-  </text>
-  <text x="210" y="182" font-family="'SF Pro Display','Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="62" font-weight="700" letter-spacing="3" fill="url(#glow2)">
-    BRAIN
-  </text>
-
-  <!-- Tagline -->
-  <text x="214" y="214" font-family="'SF Mono','Fira Code','Cascadia Code',monospace" font-size="14" letter-spacing="4" fill="#888" text-transform="uppercase">
-    OFFLINE AGENT MEMORY
-  </text>
-
-  <!-- Decorative line under tagline -->
-  <line x1="214" y1="226" x2="510" y2="226" stroke="url(#glow)" stroke-width="1" opacity="0.3"/>
 </svg>
