@@ -1,4 +1,5 @@
 export { default as init } from './init.js';
+export { default as setup } from './setup.js';
 export { default as enable } from './enable.js';
 export { default as record } from './record.js';
 export { default as recall } from './recall.js';

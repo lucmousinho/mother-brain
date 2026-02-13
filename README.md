@@ -6,28 +6,6 @@ Mother Brain provides a unified system to capture, organize, and recall context 
 
 ---
 
-## Concepts
-
-### Checkpoints (Runs)
-Every agent execution is captured as a **Run Checkpoint** — an append-only JSON file stored in `motherbrain/checkpoints/v1/YYYY/MM/run_<id>.json`. Each checkpoint contains the agent identity, intent, plan, actions taken, files touched, artifacts, result, constraints applied, and risk flags. Checkpoints are never modified after creation.
-
-### Knowledge Tree
-A curated tree of knowledge nodes in `motherbrain/tree/<type>/`. Node types include: **projects**, **goals**, **tasks**, **decisions**, **patterns**, **constraints**, **playbooks**, and **agents**. Each node is a Markdown file with YAML frontmatter and structured sections (Context, References, Next Actions). Nodes are also indexed in SQLite for fast search.
-
-### Recall
-Hybrid search over runs and nodes using keyword matching, tag filtering, and recency scoring. Returns the most relevant runs, nodes, applicable constraints, and suggested next actions. Designed to be called **before** an agent executes, providing full context.
-
-### Policy Gate
-Allow/deny rules for commands, paths, and hosts. Denylist always wins. If an allowlist exists and a value doesn't match, it's denied. All checks are audited in SQLite. Dangerous commands (`rm -rf /`, `curl | bash`, `mkfs`, etc.) and sensitive paths (`~/.ssh`, `~/.pgpass`) are denied by default.
-
-### Snapshots
-Materialized views of the current state: `current_context.md` (human-readable) and `active_tasks.json` (machine-readable). Generated on demand via `snapshot`.
-
-### Compaction
-Daily compaction reads all checkpoints for a given day and produces patterns/decisions nodes plus a daily summary markdown.
-
----
-
 ## Installation
 
 ### One-liner (macOS and Linux)
@@ -142,123 +120,110 @@ node --no-warnings bin/run.js --help
 
 ---
 
-## Quick Start
+## Setup
 
-After installation, the `motherbrain` command is available in your terminal. All **CLI commands** (init, record, recall, etc.) work immediately. The **local API** must be started manually — see below.
+One command initializes everything:
 
 ```bash
-# 1. Initialize project structure (folders, policies, storage)
-motherbrain init
-
-# 2. Enable repo mode (creates VERSION file)
-motherbrain enable
-
-# 3. Start the local API (port 7337) — runs in foreground
-motherbrain api start
-
-# 4. Record a checkpoint (in another terminal, or before starting the API)
-motherbrain record --file examples/example_run_checkpoint.json
-
-# 5. Create/update a node in the knowledge tree
-motherbrain upsert-node --file examples/example_node_task.json
-
-# 6. Search for context (hybrid recall)
-motherbrain recall "deploy"
-
-# 7. Check policy (exit code 0 = allowed, 3 = denied)
-motherbrain policy-check --cmd "git push origin main"
-motherbrain policy-check --cmd "rm -rf /"
-
-# 8. Generate snapshot (current_context.md + active_tasks.json)
-motherbrain snapshot
-
-# 9. Compact a day's checkpoints into patterns + summary
-motherbrain compact --day 2025-01-15
+motherbrain setup
 ```
 
-### About the local API
+This runs four phases automatically:
 
-The API does **not** start automatically after installation. It is a local Fastify server that runs in the foreground when you execute `motherbrain api start`. To keep it running in the background:
+1. **Init** — creates folder structure, default policies, and storage
+2. **Configure `.env`** — copies `.env.example` to `.env` with optional overrides
+3. **Enable repo mode** — detects git, creates `VERSION` file
+4. **Validate** — checks all required paths exist and prints OK/MISSING
+
+The command is idempotent — safe to run multiple times. It skips phases that are already done.
+
+### Flags
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--with-token` | `-t` | Generate a random `MB_TOKEN` in `.env` |
+| `--port <number>` | `-p` | Set `MB_API_PORT` (default 7337) |
+| `--force` | `-f` | Overwrite existing `.env` |
+
+### Examples
 
 ```bash
-# Option 1: run in background with nohup
-nohup motherbrain api start &
+# Basic setup (no auth token)
+motherbrain setup
 
-# Option 2: run in background and redirect logs
-motherbrain api start > /tmp/motherbrain-api.log 2>&1 &
+# Setup with a generated auth token
+motherbrain setup --with-token
 
-# Check if it's running
+# Setup with a custom port and auth token
+motherbrain setup --with-token --port 8080
+
+# Re-run setup and overwrite .env
+motherbrain setup --with-token --force
+```
+
+### After setup
+
+```bash
+# Start the local API
+motherbrain api start
+
+# Verify it's running
 curl http://127.0.0.1:7337/health
 ```
 
-#### Persist the API as a service (optional)
+---
 
-**macOS (launchd):**
+## Connect Your AI Agent
 
-```bash
-cat > ~/Library/LaunchAgents/com.motherbrain.api.plist << 'EOF'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>com.motherbrain.api</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/local/bin/motherbrain</string>
-    <string>api</string>
-    <string>start</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <key>KeepAlive</key>
-  <true/>
-  <key>WorkingDirectory</key>
-  <string>/Users/YOUR_USER/your-project</string>
-  <key>StandardOutPath</key>
-  <string>/tmp/motherbrain-api.log</string>
-  <key>StandardErrorPath</key>
-  <string>/tmp/motherbrain-api.log</string>
-</dict>
-</plist>
-EOF
+To connect an AI agent (OpenClaw or any other) to Mother Brain, point the agent at the skill file:
 
-# Enable
-launchctl load ~/Library/LaunchAgents/com.motherbrain.api.plist
-
-# Disable
-launchctl unload ~/Library/LaunchAgents/com.motherbrain.api.plist
+```
+Read https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md and follow the instructions.
 ```
 
-**Linux (systemd):**
+The skill file contains the full API reference, authentication details, request/response schemas, and the 4-step execution cycle that every agent must follow.
 
-```bash
-sudo tee /etc/systemd/system/motherbrain-api.service << 'EOF'
-[Unit]
-Description=Mother Brain API
-After=network.target
+### Quick Overview
 
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/motherbrain api start
-WorkingDirectory=/home/YOUR_USER/your-project
-Restart=on-failure
-RestartSec=5
-User=YOUR_USER
+Mother Brain is designed to complement OpenClaw's memory architecture. Every agent action follows this cycle:
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start
-sudo systemctl daemon-reload
-sudo systemctl enable motherbrain-api
-sudo systemctl start motherbrain-api
-
-# Check status / logs
-sudo systemctl status motherbrain-api
-journalctl -u motherbrain-api -f
 ```
+Agent
+  |
+  +-- 1. GET /recall?q="current task"     -> context + constraints
+  +-- 2. POST /policy/check               -> allow/deny
+  +-- 3. [execute action]
+  +-- 4. POST /runs                        -> persist checkpoint
+```
+
+1. **Before acting**: Call `recall` to get relevant context, constraints, and suggested actions.
+2. **Before executing**: Call `policy-check` for each command/path/host to enforce security.
+3. **Execute**: Perform the action (only if policy allows it).
+4. **After acting**: Call `record` to persist the run checkpoint.
+
+See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints. See `skill.md` for the complete agent integration guide.
+
+---
+
+## Concepts
+
+### Checkpoints (Runs)
+Every agent execution is captured as a **Run Checkpoint** — an append-only JSON file stored in `motherbrain/checkpoints/v1/YYYY/MM/run_<id>.json`. Each checkpoint contains the agent identity, intent, plan, actions taken, files touched, artifacts, result, constraints applied, and risk flags. Checkpoints are never modified after creation.
+
+### Knowledge Tree
+A curated tree of knowledge nodes in `motherbrain/tree/<type>/`. Node types include: **projects**, **goals**, **tasks**, **decisions**, **patterns**, **constraints**, **playbooks**, and **agents**. Each node is a Markdown file with YAML frontmatter and structured sections (Context, References, Next Actions). Nodes are also indexed in SQLite for fast search.
+
+### Recall
+Hybrid search over runs and nodes using keyword matching, tag filtering, and recency scoring. Returns the most relevant runs, nodes, applicable constraints, and suggested next actions. Designed to be called **before** an agent executes, providing full context.
+
+### Policy Gate
+Allow/deny rules for commands, paths, and hosts. Denylist always wins. If an allowlist exists and a value doesn't match, it's denied. All checks are audited in SQLite. Dangerous commands (`rm -rf /`, `curl | bash`, `mkfs`, etc.) and sensitive paths (`~/.ssh`, `~/.pgpass`) are denied by default.
+
+### Snapshots
+Materialized views of the current state: `current_context.md` (human-readable) and `active_tasks.json` (machine-readable). Generated on demand via `snapshot`.
+
+### Compaction
+Daily compaction reads all checkpoints for a given day and produces patterns/decisions nodes plus a daily summary markdown.
 
 ---
 
@@ -266,6 +231,7 @@ journalctl -u motherbrain-api -f
 
 | Command | Description |
 |---------|-------------|
+| `motherbrain setup` | Initialize project, configure .env, enable repo mode |
 | `motherbrain init` | Create folder structure, default policies, storage |
 | `motherbrain enable` | Activate repo mode, create VERSION file |
 | `motherbrain api start` | Start Fastify API on port 7337 |
@@ -371,6 +337,90 @@ curl -X POST http://127.0.0.1:7337/policy/check \
 
 ---
 
+## Running as a Service
+
+The API runs in the foreground by default. To keep it running in the background:
+
+```bash
+# Option 1: nohup
+nohup motherbrain api start &
+
+# Option 2: redirect logs
+motherbrain api start > /tmp/motherbrain-api.log 2>&1 &
+
+# Check if it's running
+curl http://127.0.0.1:7337/health
+```
+
+### macOS (launchd)
+
+```bash
+cat > ~/Library/LaunchAgents/com.motherbrain.api.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.motherbrain.api</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/motherbrain</string>
+    <string>api</string>
+    <string>start</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USER/your-project</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/motherbrain-api.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/motherbrain-api.log</string>
+</dict>
+</plist>
+EOF
+
+# Enable
+launchctl load ~/Library/LaunchAgents/com.motherbrain.api.plist
+
+# Disable
+launchctl unload ~/Library/LaunchAgents/com.motherbrain.api.plist
+```
+
+### Linux (systemd)
+
+```bash
+sudo tee /etc/systemd/system/motherbrain-api.service << 'EOF'
+[Unit]
+Description=Mother Brain API
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/motherbrain api start
+WorkingDirectory=/home/YOUR_USER/your-project
+Restart=on-failure
+RestartSec=5
+User=YOUR_USER
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable motherbrain-api
+sudo systemctl start motherbrain-api
+
+# Check status / logs
+sudo systemctl status motherbrain-api
+journalctl -u motherbrain-api -f
+```
+
+---
+
 ## Project Structure
 
 ```
@@ -409,41 +459,15 @@ mother-brain/
 
 ---
 
-## Connect Your AI Agent
-
-To connect an AI agent (OpenClaw or any other) to Mother Brain, point the agent at the skill file:
-
-```
-Read https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md and follow the instructions.
-```
-
-The skill file contains the full API reference, authentication details, request/response schemas, and the 4-step execution cycle that every agent must follow.
-
-### Quick Overview
-
-Mother Brain is designed to complement OpenClaw's memory architecture. Every agent action follows this cycle:
-
-```
-Agent
-  |
-  +-- 1. GET /recall?q="current task"     -> context + constraints
-  +-- 2. POST /policy/check               -> allow/deny
-  +-- 3. [execute action]
-  +-- 4. POST /runs                        -> persist checkpoint
-```
-
-1. **Before acting**: Call `recall` to get relevant context, constraints, and suggested actions.
-2. **Before executing**: Call `policy-check` for each command/path/host to enforce security.
-3. **Execute**: Perform the action (only if policy allows it).
-4. **After acting**: Call `record` to persist the run checkpoint.
-
-See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints. See `skill.md` for the complete agent integration guide.
-
----
-
 ## Configuration
 
-Copy `.env.example` to `.env`:
+The quickest way to configure Mother Brain is via the setup command:
+
+```bash
+motherbrain setup --with-token --port 7337
+```
+
+This creates `.env` from `.env.example` with your chosen options. To configure manually:
 
 ```bash
 cp .env.example .env
@@ -463,6 +487,7 @@ cp .env.example .env
 ```bash
 # Run CLI in dev mode (no build needed)
 pnpm dev init
+pnpm dev setup --with-token
 pnpm dev record --file examples/example_run_checkpoint.json
 
 # Run tests
