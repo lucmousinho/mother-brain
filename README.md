@@ -409,16 +409,22 @@ mother-brain/
 
 ---
 
-## Integration with OpenClaw
+## Connect Your AI Agent
 
-Mother Brain is designed to complement OpenClaw's memory architecture:
-
-1. **Before agent action**: Call `recall` to get relevant context, constraints, and suggested actions.
-2. **Before executing**: Call `policy-check` for each command/path/host to enforce security.
-3. **After agent action**: Call `record` to persist the run checkpoint.
+To connect an AI agent (OpenClaw or any other) to Mother Brain, point the agent at the skill file:
 
 ```
-OpenClaw Agent
+Read https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md and follow the instructions.
+```
+
+The skill file contains the full API reference, authentication details, request/response schemas, and the 4-step execution cycle that every agent must follow.
+
+### Quick Overview
+
+Mother Brain is designed to complement OpenClaw's memory architecture. Every agent action follows this cycle:
+
+```
+Agent
   |
   +-- 1. GET /recall?q="current task"     -> context + constraints
   +-- 2. POST /policy/check               -> allow/deny
@@ -426,7 +432,12 @@ OpenClaw Agent
   +-- 4. POST /runs                        -> persist checkpoint
 ```
 
-See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints.
+1. **Before acting**: Call `recall` to get relevant context, constraints, and suggested actions.
+2. **Before executing**: Call `policy-check` for each command/path/host to enforce security.
+3. **Execute**: Perform the action (only if policy allows it).
+4. **After acting**: Call `record` to persist the run checkpoint.
+
+See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints. See `skill.md` for the complete agent integration guide.
 
 ---
 
