@@ -1,0 +1,51 @@
+{
+  "_comment": "Mock OpenClaw event — shows how an OpenClaw-style agent event maps to Mother Brain",
+  "openclaw_event": {
+    "type": "agent_action",
+    "agent_id": "openclaw_agent_42",
+    "session": "sess_20250115_xyz",
+    "timestamp": "2025-01-15T14:30:00Z",
+    "action": {
+      "tool": "shell",
+      "command": "npm run build",
+      "result": "Build successful"
+    },
+    "memory_refs": [
+      "MEMORY.md#deploy-pipeline",
+      "memory/2025-01-15.md"
+    ]
+  },
+  "motherbrain_mapping": {
+    "version": "v1",
+    "agent": {
+      "id": "openclaw_agent_42",
+      "name": "OpenClaw Agent",
+      "session_id": "sess_20250115_xyz"
+    },
+    "intent": {
+      "goal": "Build project for deployment",
+      "context": ["Triggered by OpenClaw daily memory review"]
+    },
+    "plan": [
+      { "step": 1, "description": "Run build command", "status": "done" }
+    ],
+    "actions": [
+      {
+        "type": "command",
+        "command": "npm run build",
+        "detail": "Build successful",
+        "timestamp": "2025-01-15T14:30:00Z"
+      }
+    ],
+    "files_touched": [],
+    "artifacts": [],
+    "result": {
+      "status": "success",
+      "summary": "Project built successfully via OpenClaw agent"
+    },
+    "constraints_applied": [],
+    "risk_flags": [],
+    "links": { "nodes": [] },
+    "tags": ["openclaw", "build"]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "version": "v1",
+  "agent": {
+    "id": "agent_coder_01",
+    "name": "Coder Agent",
+    "session_id": "session_abc123"
+  },
+  "intent": {
+    "goal": "Deploy staging environment with new auth module",
+    "context": [
+      "Sprint 12 delivery",
+      "Auth refactor from task_auth_001"
+    ]
+  },
+  "plan": [
+    { "step": 1, "description": "Pull latest from main", "status": "done" },
+    { "step": 2, "description": "Run tests", "status": "done" },
+    { "step": 3, "description": "Build Docker image", "status": "done" },
+    { "step": 4, "description": "Deploy to staging", "status": "done" }
+  ],
+  "actions": [
+    { "type": "command", "command": "git pull origin main", "timestamp": "2025-01-15T10:00:00Z" },
+    { "type": "command", "command": "pnpm test", "timestamp": "2025-01-15T10:01:00Z" },
+    { "type": "command", "command": "docker build -t app:staging .", "timestamp": "2025-01-15T10:05:00Z" },
+    { "type": "deploy", "host": "staging.example.com", "detail": "Deployed v2.3.0", "timestamp": "2025-01-15T10:10:00Z" }
+  ],
+  "files_touched": [
+    "src/auth/module.ts",
+    "src/auth/middleware.ts",
+    "docker-compose.staging.yml"
+  ],
+  "artifacts": [
+    { "type": "docker_image", "path": "app:staging" },
+    { "type": "log", "content": "All 42 tests passed" }
+  ],
+  "result": {
+    "status": "success",
+    "summary": "Staging deployed with auth module v2.3.0. All tests passing."
+  },
+  "constraints_applied": [
+    "constraint_no_prod_deploy",
+    "constraint_require_tests"
+  ],
+  "risk_flags": [],
+  "links": {
+    "nodes": ["task_deploy_staging_001"]
+  },
+  "tags": ["deploy", "staging", "auth", "sprint-12"]
+}

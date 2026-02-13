@@ -1,0 +1,19 @@
+{
+  "id": "task_deploy_staging_001",
+  "type": "task",
+  "title": "Deploy staging environment",
+  "status": "active",
+  "tags": ["deploy", "staging", "infra"],
+  "owners": ["agent_coder_01", "user_luc"],
+  "constraints": ["constraint_no_prod_deploy"],
+  "body": "Deploy the latest auth module to the staging environment. Requires all tests to pass before deployment. Must follow the standard deploy pipeline.",
+  "refs": {
+    "runs": [],
+    "files": ["docker-compose.staging.yml", "src/auth/module.ts"]
+  },
+  "next_actions": [
+    "Verify staging health checks after deploy",
+    "Run integration tests on staging",
+    "Notify team on Slack"
+  ]
+}
