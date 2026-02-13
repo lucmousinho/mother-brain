@@ -13,7 +13,8 @@
   <a href="#connect-your-ai-agent">Connect Agent</a> &middot;
   <a href="#semantic-recall-offline">Semantic Recall</a> &middot;
   <a href="#cli-commands">CLI</a> &middot;
-  <a href="#api-endpoints">API</a>
+  <a href="#api-endpoints">API</a> &middot;
+  <a href="#updating">Updating</a>
 </p>
 
 ---
@@ -118,6 +119,33 @@ sudo rm /usr/local/bin/motherbrain
 # Remove the bundle
 rm -rf ~/.motherbrain
 ```
+
+---
+
+### Updating
+
+```bash
+# Check if an update is available
+motherbrain self-update --check-only
+
+# Update to the latest version
+motherbrain self-update
+
+# Update without confirmation prompt
+motherbrain self-update --yes
+
+# Update to a specific version
+motherbrain self-update --version v0.3.0
+```
+
+The update process: downloads the new release, verifies the SHA-256 checksum, backs up the current installation to `~/.motherbrain/previous/`, and atomically swaps the bundle. If anything fails, the previous version is automatically restored.
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--check-only` | | Only check, do not install |
+| `--yes` | `-y` | Skip confirmation prompt |
+| `--force` | `-f` | Force update even if checksum unavailable |
+| `--version` | `-v` | Target a specific version tag |
 
 ---
 
@@ -309,6 +337,7 @@ After running `embed-model warmup` once, Mother Brain is fully offline:
 | `motherbrain compact --day YYYY-MM-DD` | Compact a day into patterns + summary |
 | `motherbrain embed-model warmup` | Download model and verify offline readiness |
 | `motherbrain embed-model info` | Show model config, vector store status |
+| `motherbrain self-update` | Update CLI to latest version from GitHub Releases |
 
 ### record
 

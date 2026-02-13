@@ -10,3 +10,4 @@ export { default as 'policy-check' } from './policy-check.js';
 export { default as 'api start' } from './api/start.js';
 export { default as 'embed-model warmup' } from './embed-model/warmup.js';
 export { default as 'embed-model info' } from './embed-model/info.js';
+export { default as 'self-update' } from './self-update.js';
