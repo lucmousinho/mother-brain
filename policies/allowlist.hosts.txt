@@ -1,0 +1,2 @@
+# Allowed hosts (empty = allow all)
+# Add hosts here to restrict outbound connections

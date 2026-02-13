@@ -1,0 +1,2 @@
+# Allowed paths (empty = allow all by default, only denylist applies)
+# Add patterns here to restrict to only these paths

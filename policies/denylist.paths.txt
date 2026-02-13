@@ -1,0 +1,11 @@
+# Sensitive paths - deny by default
+/
+/etc/passwd
+/etc/shadow
+~/.ssh
+~/.ssh/*
+~/.pgpass
+~/.aws/credentials
+~/.config/gcloud
+/proc
+/sys

@@ -1,0 +1,2 @@
+# Denied hosts
+# Add hosts here to block outbound connections

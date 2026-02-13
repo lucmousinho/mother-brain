@@ -1,0 +1,15 @@
+# Dangerous commands - deny by default
+rm -rf /
+rm -rf /*
+mkfs*
+dd if=*
+curl * | bash
+wget * | bash
+:(){ :|:& };:
+chmod -R 777 /
+chown -R * /
+> /dev/sda
+shutdown*
+reboot*
+init 0
+kill -9 -1
