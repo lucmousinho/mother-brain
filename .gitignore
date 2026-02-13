@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local storage (SQLite, locks)
+storage/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Environment
+.env
+.env.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Runtime data from E2E / testing
+motherbrain/checkpoints/v1/202*
+motherbrain/links/by-run/run_*
+motherbrain/snapshots/current_context.md
+motherbrain/snapshots/active_tasks.json
+motherbrain/snapshots/daily_summary_*
+motherbrain/tree/*/pattern_*
+motherbrain/tree/*/task_*
+motherbrain/VERSION
+
+# Temp / test artifacts
+.test-*
+*.tsbuildinfo
+.claude/
