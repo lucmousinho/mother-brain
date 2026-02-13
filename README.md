@@ -36,19 +36,19 @@ Daily compaction reads all checkpoints for a given day and produces patterns/dec
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
 ```
 
-Isso e tudo. Apos rodar esse comando, `motherbrain` fica disponivel como comando global no terminal.
+That's it. After running this command, `motherbrain` is available as a global command in your terminal.
 
-#### O que o install.sh faz, passo a passo
+#### What install.sh does, step by step
 
-1. Detecta seu sistema operacional e arquitetura (`uname -s`, `uname -m`)
-2. Consulta a GitHub Releases API para resolver a versao mais recente
-3. Baixa o tarball correto para sua plataforma (ex: `motherbrain-v0.1.0-darwin-arm64.tar.gz`)
-4. Baixa o arquivo de checksums e verifica o SHA-256 do tarball
-5. Extrai o bundle completo para `~/.motherbrain/current/` — inclui Node.js embutido, o app compilado e todas as dependencias nativas
-6. Cria um symlink em `/usr/local/bin/motherbrain` (se tiver permissao de escrita ou sudo) — se nao, usa `~/.local/bin/motherbrain` como fallback
-7. Valida a instalacao rodando `motherbrain --version`
+1. Detects your operating system and architecture (`uname -s`, `uname -m`)
+2. Queries the GitHub Releases API to resolve the latest version
+3. Downloads the correct tarball for your platform (e.g. `motherbrain-v0.1.0-darwin-arm64.tar.gz`)
+4. Downloads the checksums file and verifies the SHA-256 of the tarball
+5. Extracts the full bundle to `~/.motherbrain/current/` — includes a bundled Node.js runtime, the compiled app, and all native dependencies
+6. Creates a symlink at `/usr/local/bin/motherbrain` (if writable or sudo is available) — otherwise falls back to `~/.local/bin/motherbrain`
+7. Validates the installation by running `motherbrain --version`
 
-Apos a instalacao, abra um **novo terminal** (ou rode `source ~/.bashrc` / `source ~/.zshrc`) e o comando `motherbrain` estara disponivel:
+After installation, open a **new terminal** (or run `source ~/.bashrc` / `source ~/.zshrc`) and the `motherbrain` command will be available:
 
 ```bash
 motherbrain --version
@@ -57,81 +57,81 @@ motherbrain --version
 motherbrain --help
 ```
 
-#### Plataformas suportadas
+#### Supported platforms
 
-| OS    | Arquitetura | Suportado |
-|-------|-------------|-----------|
-| macOS | arm64 (Apple Silicon) | Sim |
-| macOS | x64 (Intel) | Sim |
-| Linux | x64 | Sim |
-| Linux | arm64 | Sim |
+| OS    | Architecture | Supported |
+|-------|--------------|-----------|
+| macOS | arm64 (Apple Silicon) | Yes |
+| macOS | x64 (Intel) | Yes |
+| Linux | x64 | Yes |
+| Linux | arm64 | Yes |
 
-#### Variantes de instalacao
+#### Install variants
 
 ```bash
-# Instalar uma versao especifica
+# Install a specific version
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --version v0.2.0
 
-# Revisar o script antes de rodar (recomendado para quem quer auditar)
+# Review the script before running (recommended for security-conscious users)
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh -o install.sh
 less install.sh
 bash install.sh
 
-# Instalar em diretorio customizado
+# Custom symlink directory
 MB_INSTALL_DIR=~/bin curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
 
-# Usar diretorio de bundle customizado (default: ~/.motherbrain)
+# Custom bundle home directory (default: ~/.motherbrain)
 MB_HOME=/opt/motherbrain curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
 ```
 
-#### Se `~/.local/bin` nao esta no PATH
+#### If `~/.local/bin` is not in your PATH
 
-Se o instalador usou `~/.local/bin` (porque nao tem sudo), adicione ao seu shell profile:
+If the installer used `~/.local/bin` (because sudo is not available), add it to your shell profile:
 
 ```bash
-# Para bash (~/.bashrc)
+# For bash (~/.bashrc)
 echo 'export PATH="${HOME}/.local/bin:${PATH}"' >> ~/.bashrc
 source ~/.bashrc
 
-# Para zsh (~/.zshrc)
+# For zsh (~/.zshrc)
 echo 'export PATH="${HOME}/.local/bin:${PATH}"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-#### Requisitos
+#### Requirements
 
-- **Instalacao via binario:** bash, curl, tar — **nao precisa de Node.js** (o runtime vem embutido no bundle)
-- **Instalacao via source:** Node.js >= 20, pnpm
+- **Binary install:** bash, curl, tar — **no Node.js required** (the runtime is bundled)
+- **From source:** Node.js >= 20, pnpm
 
 ---
 
-### Desinstalacao
+### Uninstall
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/uninstall.sh | bash
 ```
 
-#### O que o uninstall.sh faz
+#### What uninstall.sh does
 
-1. Localiza o symlink `motherbrain` no PATH (`/usr/local/bin` ou `~/.local/bin`)
-2. Remove o symlink (pede sudo se necessario)
-3. Remove o diretorio do bundle `~/.motherbrain/` com Node.js e app
-4. **Nao** remove dados do projeto (`./motherbrain/`, `./storage/`, `./policies/`) — esses ficam intactos
+1. Locates the `motherbrain` symlink in PATH (`/usr/local/bin` or `~/.local/bin`)
+2. Removes the symlink (requests sudo if needed)
+3. Removes the bundle directory `~/.motherbrain/` containing Node.js and the app
+4. Does **not** remove project data (`./motherbrain/`, `./storage/`, `./policies/`) — those remain untouched
 
-#### Desinstalacao manual
+#### Manual uninstall
 
 ```bash
-# Remover o symlink
+# Remove the symlink
 sudo rm /usr/local/bin/motherbrain
-# ou: rm ~/.local/bin/motherbrain
+# or: rm ~/.local/bin/motherbrain
 
-# Remover o bundle
+# Remove the bundle
 rm -rf ~/.motherbrain
 ```
 
 ---
 
-### Instalacao via source (para desenvolvimento)
+### Install from source (for development)
 
 ```bash
 git clone https://github.com/lucmousinho/mother-brain.git && cd mother-brain
@@ -144,54 +144,54 @@ node --no-warnings bin/run.js --help
 
 ## Quick Start
 
-Apos instalar, o comando `motherbrain` fica disponivel no terminal. Os **comandos CLI** (init, record, recall, etc.) funcionam imediatamente. A **API local** precisa ser iniciada manualmente — veja abaixo.
+After installation, the `motherbrain` command is available in your terminal. All **CLI commands** (init, record, recall, etc.) work immediately. The **local API** must be started manually — see below.
 
 ```bash
-# 1. Inicializar estrutura do projeto (pastas, policies, storage)
+# 1. Initialize project structure (folders, policies, storage)
 motherbrain init
 
-# 2. Ativar modo repo (cria VERSION file)
+# 2. Enable repo mode (creates VERSION file)
 motherbrain enable
 
-# 3. Iniciar a API local (porta 7337) — roda em foreground
+# 3. Start the local API (port 7337) — runs in foreground
 motherbrain api start
 
-# 4. Gravar um checkpoint (em outro terminal, ou antes de iniciar a API)
+# 4. Record a checkpoint (in another terminal, or before starting the API)
 motherbrain record --file examples/example_run_checkpoint.json
 
-# 5. Criar/atualizar um node na arvore de conhecimento
+# 5. Create/update a node in the knowledge tree
 motherbrain upsert-node --file examples/example_node_task.json
 
-# 6. Buscar contexto (recall hibrido)
+# 6. Search for context (hybrid recall)
 motherbrain recall "deploy"
 
-# 7. Checar policy (exit 0 = permitido, exit 3 = negado)
+# 7. Check policy (exit code 0 = allowed, 3 = denied)
 motherbrain policy-check --cmd "git push origin main"
 motherbrain policy-check --cmd "rm -rf /"
 
-# 8. Gerar snapshot (current_context.md + active_tasks.json)
+# 8. Generate snapshot (current_context.md + active_tasks.json)
 motherbrain snapshot
 
-# 9. Compactar checkpoints de um dia em patterns + resumo
+# 9. Compact a day's checkpoints into patterns + summary
 motherbrain compact --day 2025-01-15
 ```
 
-### Sobre a API local
+### About the local API
 
-A API **nao** inicia automaticamente apos a instalacao. Ela e um servidor Fastify local que roda em foreground quando voce executa `motherbrain api start`. Para mante-la rodando em background:
+The API does **not** start automatically after installation. It is a local Fastify server that runs in the foreground when you execute `motherbrain api start`. To keep it running in the background:
 
 ```bash
-# Opcao 1: rodar em background com nohup
+# Option 1: run in background with nohup
 nohup motherbrain api start &
 
-# Opcao 2: rodar em background e redirecionar logs
+# Option 2: run in background and redirect logs
 motherbrain api start > /tmp/motherbrain-api.log 2>&1 &
 
-# Verificar se esta rodando
+# Check if it's running
 curl http://127.0.0.1:7337/health
 ```
 
-#### Persistir a API como servico (opcional)
+#### Persist the API as a service (optional)
 
 **macOS (launchd):**
 
@@ -214,7 +214,7 @@ cat > ~/Library/LaunchAgents/com.motherbrain.api.plist << 'EOF'
   <key>KeepAlive</key>
   <true/>
   <key>WorkingDirectory</key>
-  <string>/Users/SEU_USUARIO/seu-projeto</string>
+  <string>/Users/YOUR_USER/your-project</string>
   <key>StandardOutPath</key>
   <string>/tmp/motherbrain-api.log</string>
   <key>StandardErrorPath</key>
@@ -223,17 +223,17 @@ cat > ~/Library/LaunchAgents/com.motherbrain.api.plist << 'EOF'
 </plist>
 EOF
 
-# Ativar
+# Enable
 launchctl load ~/Library/LaunchAgents/com.motherbrain.api.plist
 
-# Desativar
+# Disable
 launchctl unload ~/Library/LaunchAgents/com.motherbrain.api.plist
 ```
 
 **Linux (systemd):**
 
 ```bash
-sudo cat > /etc/systemd/system/motherbrain-api.service << 'EOF'
+sudo tee /etc/systemd/system/motherbrain-api.service << 'EOF'
 [Unit]
 Description=Mother Brain API
 After=network.target
@@ -241,21 +241,21 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/motherbrain api start
-WorkingDirectory=/home/SEU_USUARIO/seu-projeto
+WorkingDirectory=/home/YOUR_USER/your-project
 Restart=on-failure
 RestartSec=5
-User=SEU_USUARIO
+User=YOUR_USER
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-# Ativar e iniciar
+# Enable and start
 sudo systemctl daemon-reload
 sudo systemctl enable motherbrain-api
 sudo systemctl start motherbrain-api
 
-# Ver status / logs
+# Check status / logs
 sudo systemctl status motherbrain-api
 journalctl -u motherbrain-api -f
 ```
@@ -397,10 +397,11 @@ mother-brain/
   src/
     cli/commands/             # oclif CLI commands
     api/                      # Fastify API server + routes
-    core/                     # Business logic (schemas, checkpoint, tree, recall, policy, snapshot, compact)
+    core/                     # Business logic
     db/                       # SQLite database layer
     adapters/openclaw/        # OpenClaw adapter
     utils/                    # Utilities (paths, IDs, filelock, markdown)
+  scripts/                    # Build and packaging scripts
   templates/                  # Templates for nodes and checkpoints
   examples/                   # Example JSON files
   tests/                      # Vitest tests
@@ -418,11 +419,11 @@ Mother Brain is designed to complement OpenClaw's memory architecture:
 
 ```
 OpenClaw Agent
-  │
-  ├── 1. GET /recall?q="current task"     → context + constraints
-  ├── 2. POST /policy/check               → allow/deny
-  ├── 3. [execute action]
-  └── 4. POST /runs                        → persist checkpoint
+  |
+  +-- 1. GET /recall?q="current task"     -> context + constraints
+  +-- 2. POST /policy/check               -> allow/deny
+  +-- 3. [execute action]
+  +-- 4. POST /runs                        -> persist checkpoint
 ```
 
 See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints.
