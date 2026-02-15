@@ -27,6 +27,16 @@ motherbrain --version
 motherbrain --help
 ```
 
+### Fallback strategies
+
+The installer tries three strategies in order:
+
+1. **GitHub Release** (default) — downloads a pre-built binary tarball for your platform
+2. **Git Tags** — if no releases exist yet, resolves the latest `v*` tag and tries to download its release assets
+3. **From Source** — if neither releases nor tags exist, downloads the source from `main`, builds with `pnpm`, and installs to `~/.motherbrain/current/`
+
+This means the installer works even before the first GitHub Release is published.
+
 ### Supported platforms
 
 | OS    | Architecture | Supported |
@@ -42,6 +52,9 @@ motherbrain --help
 # Install a specific version
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --version v0.2.0
 
+# Build from source (requires Node.js >= 20 and pnpm)
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --from-source
+
 # Review the script before running (recommended for security-conscious users)
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh -o install.sh
 less install.sh
@@ -52,6 +65,9 @@ MB_INSTALL_DIR=~/bin curl -fsSL https://raw.githubusercontent.com/lucmousinho/mo
 
 # Custom bundle home directory (default: ~/.motherbrain)
 MB_HOME=/opt/motherbrain curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+
+# With GitHub token (avoids rate limits)
+GITHUB_TOKEN=ghp_xxx curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
 ```
 
 ### If `~/.local/bin` is not in your PATH
@@ -72,6 +88,16 @@ source ~/.zshrc
 
 - **Binary install:** bash, curl, tar — **no Node.js required** (the runtime is bundled)
 - **From source:** Node.js >= 20, pnpm
+
+### Environment variables
+
+| Variable | Description |
+|----------|-------------|
+| `MB_INSTALL_DIR` | Override symlink directory (default: `/usr/local/bin`) |
+| `MB_HOME` | Override bundle home (default: `~/.motherbrain`) |
+| `MB_VERSION` | Override version (default: latest) |
+| `GITHUB_TOKEN` | GitHub API token (avoids rate limits, required for private repos) |
+| `MB_GITHUB_TOKEN` | Alias for `GITHUB_TOKEN` (takes priority) |
 
 ---
 
@@ -125,6 +151,39 @@ The update process: downloads the new release, verifies the SHA-256 checksum, ba
 | `--yes` | `-y` | Skip confirmation prompt |
 | `--force` | `-f` | Force update even if checksum unavailable |
 | `--version` | `-v` | Target a specific version tag |
+
+---
+
+## Publishing releases (for maintainers)
+
+The repo includes a GitHub Actions workflow (`.github/workflows/release.yml`) that automatically builds platform tarballs when a version tag is pushed.
+
+### Creating the first release
+
+```bash
+# Ensure everything builds and tests pass
+pnpm build && pnpm test
+
+# Create and push the tag
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+This triggers the release workflow which:
+1. Builds standalone tarballs for all 4 platforms (linux-x64, linux-arm64, darwin-x64, darwin-arm64)
+2. Runs tests on each platform
+3. Generates SHA-256 checksums
+4. Creates a GitHub Release with all assets attached
+
+### Subsequent releases
+
+```bash
+# Bump version in package.json, commit, then tag
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+The installer will automatically pick up the new release as "latest".
 
 ---
 
