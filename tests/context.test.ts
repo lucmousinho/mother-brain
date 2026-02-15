@@ -86,11 +86,11 @@ describe('Context System', () => {
   describe('createContext', () => {
     it('should create a vertical context', async () => {
       const ctx = await createContext(
-        { name: 'saude', scope: 'vertical' },
+        { name: 'healthcare', scope: 'vertical' },
         testDb,
       );
 
-      expect(ctx.name).toBe('saude');
+      expect(ctx.name).toBe('healthcare');
       expect(ctx.scope).toBe('vertical');
       expect(ctx.parent_id).toBe(GLOBAL_CONTEXT_ID);
       expect(ctx.context_id).toMatch(/^ctx_vertical_/);
@@ -99,16 +99,16 @@ describe('Context System', () => {
 
     it('should create a project context under a vertical', async () => {
       const vertical = await createContext(
-        { name: 'saude', scope: 'vertical' },
+        { name: 'healthcare', scope: 'vertical' },
         testDb,
       );
 
       const project = await createContext(
-        { name: 'drclick', scope: 'project', parent_id: vertical.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: vertical.context_id },
         testDb,
       );
 
-      expect(project.name).toBe('drclick');
+      expect(project.name).toBe('project-alpha');
       expect(project.scope).toBe('project');
       expect(project.parent_id).toBe(vertical.context_id);
       expect(project.context_id).toMatch(/^ctx_project_/);
@@ -116,15 +116,15 @@ describe('Context System', () => {
     });
 
     it('should allow parent lookup by name', async () => {
-      await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
 
       const project = await createContext(
-        { name: 'drclick', scope: 'project', parent_id: 'saude' },
+        { name: 'project-alpha', scope: 'project', parent_id: 'healthcare' },
         testDb,
       );
 
       expect(project.scope).toBe('project');
-      expect(project.name).toBe('drclick');
+      expect(project.name).toBe('project-alpha');
     });
 
     it('should reject project without parent', async () => {
@@ -144,11 +144,11 @@ describe('Context System', () => {
 
     it('should reject project with project parent', async () => {
       const vertical = await createContext(
-        { name: 'saude', scope: 'vertical' },
+        { name: 'healthcare', scope: 'vertical' },
         testDb,
       );
       const project = await createContext(
-        { name: 'drclick', scope: 'project', parent_id: vertical.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: vertical.context_id },
         testDb,
       );
 
@@ -164,19 +164,19 @@ describe('Context System', () => {
   describe('getContext / getContextByName', () => {
     it('should retrieve by ID', async () => {
       const created = await createContext(
-        { name: 'educacao', scope: 'vertical' },
+        { name: 'fintech', scope: 'vertical' },
         testDb,
       );
 
       const found = getContext(created.context_id, testDb);
       expect(found).not.toBeNull();
-      expect(found!.name).toBe('educacao');
+      expect(found!.name).toBe('fintech');
     });
 
     it('should retrieve by name', async () => {
-      await createContext({ name: 'jogos', scope: 'vertical' }, testDb);
+      await createContext({ name: 'gaming', scope: 'vertical' }, testDb);
 
-      const found = getContextByName('jogos', testDb);
+      const found = getContextByName('gaming', testDb);
       expect(found).not.toBeNull();
       expect(found!.scope).toBe('vertical');
     });
@@ -189,29 +189,29 @@ describe('Context System', () => {
 
   describe('listContexts', () => {
     it('should list all contexts', async () => {
-      await createContext({ name: 'saude', scope: 'vertical' }, testDb);
-      await createContext({ name: 'educacao', scope: 'vertical' }, testDb);
+      await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
+      await createContext({ name: 'fintech', scope: 'vertical' }, testDb);
 
       const all = listContexts(undefined, undefined, testDb);
       expect(all.length).toBe(3); // global + 2 verticals
     });
 
     it('should filter by scope', async () => {
-      await createContext({ name: 'saude', scope: 'vertical' }, testDb);
-      await createContext({ name: 'educacao', scope: 'vertical' }, testDb);
+      await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
+      await createContext({ name: 'fintech', scope: 'vertical' }, testDb);
 
       const verticals = listContexts('vertical', undefined, testDb);
       expect(verticals.length).toBe(2);
     });
 
     it('should filter by parent', async () => {
-      const v = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      const v = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
       await createContext(
-        { name: 'drclick', scope: 'project', parent_id: v.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: v.context_id },
         testDb,
       );
       await createContext(
-        { name: 'medapp', scope: 'project', parent_id: v.context_id },
+        { name: 'project-gamma', scope: 'project', parent_id: v.context_id },
         testDb,
       );
 
@@ -228,9 +228,9 @@ describe('Context System', () => {
     });
 
     it('should reject deleting context with children', async () => {
-      const v = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      const v = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
       await createContext(
-        { name: 'drclick', scope: 'project', parent_id: v.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: v.context_id },
         testDb,
       );
 
@@ -249,9 +249,9 @@ describe('Context System', () => {
 
   describe('ancestor chain', () => {
     it('should return chain for project', async () => {
-      const v = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      const v = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
       const p = await createContext(
-        { name: 'drclick', scope: 'project', parent_id: v.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: v.context_id },
         testDb,
       );
 
@@ -260,7 +260,7 @@ describe('Context System', () => {
     });
 
     it('should return chain for vertical', async () => {
-      const v = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      const v = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
 
       const chain = getAncestorChain(v.context_id, testDb);
       expect(chain).toEqual([v.context_id, GLOBAL_CONTEXT_ID]);
@@ -274,15 +274,15 @@ describe('Context System', () => {
 
   describe('cross-combination scope', () => {
     it('should union ancestor chains of multiple contexts', async () => {
-      const v1 = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+      const v1 = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
       const p1 = await createContext(
-        { name: 'drclick', scope: 'project', parent_id: v1.context_id },
+        { name: 'project-alpha', scope: 'project', parent_id: v1.context_id },
         testDb,
       );
 
-      const v2 = await createContext({ name: 'educacao', scope: 'vertical' }, testDb);
+      const v2 = await createContext({ name: 'fintech', scope: 'vertical' }, testDb);
       const p2 = await createContext(
-        { name: 'ativedu', scope: 'project', parent_id: v2.context_id },
+        { name: 'project-beta', scope: 'project', parent_id: v2.context_id },
         testDb,
       );
 

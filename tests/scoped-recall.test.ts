@@ -118,18 +118,18 @@ describe('Scoped Recall', () => {
     mkdirSync(join(TEST_DIR, 'storage', 'locks'), { recursive: true });
     testDb = setupTestDb();
 
-    // Create hierarchy: global → saude (vertical) → drclick (A), medapp (B)
-    const vertical = await createContext({ name: 'saude', scope: 'vertical' }, testDb);
+    // Create hierarchy: global → healthcare (vertical) → project-alpha (A), project-gamma (B)
+    const vertical = await createContext({ name: 'healthcare', scope: 'vertical' }, testDb);
     verticalId = vertical.context_id;
 
     const projectA = await createContext(
-      { name: 'drclick', scope: 'project', parent_id: verticalId },
+      { name: 'project-alpha', scope: 'project', parent_id: verticalId },
       testDb,
     );
     projectAId = projectA.context_id;
 
     const projectB = await createContext(
-      { name: 'medapp', scope: 'project', parent_id: verticalId },
+      { name: 'project-gamma', scope: 'project', parent_id: verticalId },
       testDb,
     );
     projectBId = projectB.context_id;
@@ -137,14 +137,14 @@ describe('Scoped Recall', () => {
     // Seed runs in different scopes
     insertRun(testDb, 'run_global_deploy', 'deploy global infra', GLOBAL_CONTEXT_ID, ['deploy']);
     insertRun(testDb, 'run_vertical_health', 'deploy health vertical', verticalId, ['deploy', 'health']);
-    insertRun(testDb, 'run_projectA_api', 'deploy drclick api', projectAId, ['deploy', 'api']);
-    insertRun(testDb, 'run_projectB_web', 'deploy medapp web', projectBId, ['deploy', 'web']);
+    insertRun(testDb, 'run_projectA_api', 'deploy project-alpha api', projectAId, ['deploy', 'api']);
+    insertRun(testDb, 'run_projectB_web', 'deploy project-gamma web', projectBId, ['deploy', 'web']);
 
     // Seed nodes in different scopes
     insertNode(testDb, 'task_global', 'task', 'Global deploy task', GLOBAL_CONTEXT_ID, ['deploy']);
     insertNode(testDb, 'task_vertical', 'task', 'Health vertical deploy', verticalId, ['deploy']);
-    insertNode(testDb, 'task_projectA', 'task', 'DrClick deploy task', projectAId, ['deploy']);
-    insertNode(testDb, 'task_projectB', 'task', 'MedApp deploy task', projectBId, ['deploy']);
+    insertNode(testDb, 'task_projectA', 'task', 'Project Alpha deploy task', projectAId, ['deploy']);
+    insertNode(testDb, 'task_projectB', 'task', 'Project Gamma deploy task', projectBId, ['deploy']);
   });
 
   afterEach(() => {

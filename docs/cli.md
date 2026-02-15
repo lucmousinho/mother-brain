@@ -36,7 +36,7 @@ motherbrain record --file run.json
 cat run.json | motherbrain record
 
 # Within a specific context
-motherbrain record --file run.json --context drclick
+motherbrain record --file run.json --context project-alpha
 ```
 
 | Flag | Short | Description |
@@ -63,7 +63,7 @@ motherbrain upsert-node \
   --tags deploy,staging
 
 # Within a context
-motherbrain upsert-node --file node.json --context drclick
+motherbrain upsert-node --file node.json --context project-alpha
 ```
 
 | Flag | Short | Description |
@@ -100,7 +100,7 @@ motherbrain recall "deploy staging" --mode semantic
 motherbrain recall "auth refactor" --mode hybrid
 
 # Scoped recall
-motherbrain recall "deploy" --context drclick
+motherbrain recall "deploy" --context project-alpha
 
 # Cross-combination recall
 motherbrain recall "deploy" --contexts ctx_project_xxx,ctx_project_yyy
@@ -124,10 +124,10 @@ Create a new memory context (vertical or project).
 
 ```bash
 # Create a vertical
-motherbrain context create --name saude --scope vertical
+motherbrain context create --name healthcare --scope vertical
 
 # Create a project under a vertical
-motherbrain context create --name drclick --scope project --parent saude
+motherbrain context create --name project-alpha --scope project --parent healthcare
 ```
 
 | Flag | Short | Description |
@@ -143,7 +143,7 @@ motherbrain context create --name drclick --scope project --parent saude
 Set the active memory context by name or ID.
 
 ```bash
-motherbrain context use drclick
+motherbrain context use project-alpha
 motherbrain context use __global__
 ```
 
@@ -162,14 +162,14 @@ motherbrain context current
 Output example:
 
 ```
-Active context: drclick (ctx_project_01jxyz)
+Active context: project-alpha (ctx_project_01jxyz)
 Scope: project
 Path: __global__/ctx_vertical_01jabc/ctx_project_01jxyz
 Set at: 2025-01-15T10:00:00.000Z
 
 Inheritance chain:
-  PROJECT: drclick (ctx_project_01jxyz)
-  VERTICAL: saude (ctx_vertical_01jabc)
+  PROJECT: project-alpha (ctx_project_01jxyz)
+  VERTICAL: healthcare (ctx_vertical_01jabc)
   GLOBAL: Global (__global__)
 ```
 
@@ -194,11 +194,11 @@ Tree output example:
 
 ```
 GLOBAL (__global__)
-  ├── saude (ctx_vertical_xxx)
-  │   ├── drclick (ctx_project_xxx)
-  │   └── medapp (ctx_project_xxx)
-  └── educacao (ctx_vertical_xxx)
-      └── ativedu (ctx_project_xxx)
+  ├── healthcare (ctx_vertical_xxx)
+  │   ├── project-alpha (ctx_project_xxx)
+  │   └── project-gamma (ctx_project_xxx)
+  └── fintech (ctx_vertical_xxx)
+      └── project-beta (ctx_project_xxx)
 ```
 
 | Flag | Short | Description |

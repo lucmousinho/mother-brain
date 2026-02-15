@@ -7,8 +7,8 @@ export default class ContextCreate extends Command {
   static override description = 'Create a new memory context (vertical or project).';
 
   static override examples = [
-    '$ motherbrain context create --name saude --scope vertical',
-    '$ motherbrain context create --name drclick --scope project --parent saude',
+    '$ motherbrain context create --name healthcare --scope vertical',
+    '$ motherbrain context create --name project-alpha --scope project --parent healthcare',
   ];
 
   static override flags = {

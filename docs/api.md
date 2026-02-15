@@ -157,13 +157,13 @@ curl -X POST http://127.0.0.1:7337/policy/check \
 ```bash
 curl -X POST http://127.0.0.1:7337/contexts \
   -H "Content-Type: application/json" \
-  -d '{"name": "saude", "scope": "vertical"}'
+  -d '{"name": "healthcare", "scope": "vertical"}'
 ```
 
 ```bash
 curl -X POST http://127.0.0.1:7337/contexts \
   -H "Content-Type: application/json" \
-  -d '{"name": "drclick", "scope": "project", "parent_id": "ctx_vertical_xxx"}'
+  -d '{"name": "project-alpha", "scope": "project", "parent_id": "ctx_vertical_xxx"}'
 ```
 
 ### List Contexts

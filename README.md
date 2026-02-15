@@ -55,18 +55,18 @@ Organize memory by vertical and project. Recall inherits from ancestors; sibling
 
 ```
 GLOBAL (__global__)
-  ├── saude (vertical)
-  │   ├── drclick (project)
-  │   └── medapp (project)
-  └── educacao (vertical)
-      └── ativedu (project)
+  ├── healthcare (vertical)
+  │   ├── project-alpha (project)
+  │   └── project-gamma (project)
+  └── fintech (vertical)
+      └── project-beta (project)
 ```
 
 ```bash
-motherbrain context create --name saude --scope vertical
-motherbrain context create --name drclick --scope project --parent saude
-motherbrain context use drclick
-motherbrain recall "deploy" --context drclick
+motherbrain context create --name healthcare --scope vertical
+motherbrain context create --name project-alpha --scope project --parent healthcare
+motherbrain context use project-alpha
+motherbrain recall "deploy" --context project-alpha
 ```
 
 See [Scoped Memory](docs/scoped-memory.md) for full details.

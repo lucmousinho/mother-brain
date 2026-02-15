@@ -7,7 +7,7 @@ export default class ContextUse extends Command {
   static override description = 'Set the active memory context by name or ID.';
 
   static override examples = [
-    '$ motherbrain context use drclick',
+    '$ motherbrain context use project-alpha',
     '$ motherbrain context use __global__',
   ];
 

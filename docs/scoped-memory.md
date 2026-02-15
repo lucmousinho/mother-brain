@@ -6,18 +6,18 @@ Mother Brain organizes memory into a **3-level hierarchy** that enables isolatio
 
 ```
 GLOBAL (__global__)
-  ├── saude (vertical)
-  │   ├── drclick (project)
-  │   └── medapp (project)
-  └── educacao (vertical)
-      └── ativedu (project)
+  ├── healthcare (vertical)
+  │   ├── project-alpha (project)
+  │   └── project-gamma (project)
+  └── fintech (vertical)
+      └── project-beta (project)
 ```
 
 | Level | Scope | Description |
 |-------|-------|-------------|
 | 1 | **Global** | Root scope. Sentinel ID: `__global__`. All existing data lives here. |
-| 2 | **Vertical** | Industry sector (e.g. saude, educacao, jogos). Parent is always Global. |
-| 3 | **Project** | Specific project within a vertical (e.g. drclick, ativedu). Parent is always a Vertical. |
+| 2 | **Vertical** | Industry sector (e.g. healthcare, fintech, gaming). Parent is always Global. |
+| 3 | **Project** | Specific project within a vertical (e.g. project-alpha, project-beta). Parent is always a Vertical. |
 
 ## Inheritance Rules
 
@@ -65,22 +65,22 @@ The system unions the ancestor chains of all provided contexts. For two projects
 
 ```bash
 # Create a vertical
-motherbrain context create --name saude --scope vertical
+motherbrain context create --name healthcare --scope vertical
 
 # Create a project under the vertical
-motherbrain context create --name drclick --scope project --parent saude
+motherbrain context create --name project-alpha --scope project --parent healthcare
 
 # Set active context (all subsequent operations use this scope)
-motherbrain context use drclick
+motherbrain context use project-alpha
 
 # Check current context
 motherbrain context current
 
 # Record within a context (explicit, overrides active context)
-motherbrain record --file run.json --context drclick
+motherbrain record --file run.json --context project-alpha
 
 # Recall within a context
-motherbrain recall "deploy" --context drclick
+motherbrain recall "deploy" --context project-alpha
 
 # View hierarchy
 motherbrain context list --format tree
