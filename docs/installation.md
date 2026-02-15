@@ -8,6 +8,10 @@ curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/insta
 
 After running this command, `motherbrain` is available as a global command in your terminal.
 
+> **Note:** The installer requires a published GitHub Release with platform tarballs.
+> If no releases exist yet, the installer automatically falls back to building from source.
+> See [Publishing releases](#publishing-releases-for-maintainers) to create the first release.
+
 ### What install.sh does, step by step
 
 1. Detects your operating system and architecture (`uname -s`, `uname -m`)
@@ -39,12 +43,12 @@ This means the installer works even before the first GitHub Release is published
 
 ### Supported platforms
 
-| OS    | Architecture | Supported |
-|-------|--------------|-----------|
-| macOS | arm64 (Apple Silicon) | Yes |
-| macOS | x64 (Intel) | Yes |
-| Linux | x64 | Yes |
-| Linux | arm64 | Yes |
+| OS    | Architecture | Binary release | From source |
+|-------|--------------|----------------|-------------|
+| macOS | arm64 (Apple Silicon) | Yes | Yes |
+| macOS | x64 (Intel) | No (use `--from-source`) | Yes |
+| Linux | x64 | Yes | Yes |
+| Linux | arm64 | Yes | Yes |
 
 ### Install variants
 
@@ -52,7 +56,7 @@ This means the installer works even before the first GitHub Release is published
 # Install a specific version
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --version v0.2.0
 
-# Build from source (requires Node.js >= 20 and pnpm)
+# Build from source (requires Node.js LTS 22 and pnpm)
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --from-source
 
 # Review the script before running (recommended for security-conscious users)
@@ -68,6 +72,28 @@ MB_HOME=/opt/motherbrain curl -fsSL https://raw.githubusercontent.com/lucmousinh
 
 # With GitHub token (avoids rate limits)
 GITHUB_TOKEN=ghp_xxx curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+
+# Debug mode (verbose HTTP diagnostics)
+MB_INSTALL_DEBUG=1 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+```
+
+### From-source requirements
+
+When building from source (either via `--from-source` or automatic fallback), you need:
+
+- **Node.js LTS 22** (recommended). Node 20 also works. Node 24+ may fail to compile native modules.
+- **pnpm** (or npm as fallback)
+- **C++ toolchain** for native modules (better-sqlite3):
+
+```bash
+# Ubuntu / Debian
+sudo apt-get update && sudo apt-get install -y python3 make g++ pkg-config
+
+# Fedora / RHEL
+sudo dnf install python3 make gcc-c++ pkg-config
+
+# macOS (if not already installed)
+xcode-select --install
 ```
 
 ### If `~/.local/bin` is not in your PATH
@@ -84,11 +110,6 @@ echo 'export PATH="${HOME}/.local/bin:${PATH}"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Requirements
-
-- **Binary install:** bash, curl, tar — **no Node.js required** (the runtime is bundled)
-- **From source:** Node.js >= 20, pnpm
-
 ### Environment variables
 
 | Variable | Description |
@@ -98,6 +119,7 @@ source ~/.zshrc
 | `MB_VERSION` | Override version (default: latest) |
 | `GITHUB_TOKEN` | GitHub API token (avoids rate limits, required for private repos) |
 | `MB_GITHUB_TOKEN` | Alias for `GITHUB_TOKEN` (takes priority) |
+| `MB_INSTALL_DEBUG` | Set to `1` for verbose HTTP/version diagnostics |
 
 ---
 
@@ -170,10 +192,12 @@ git push origin v0.1.0
 ```
 
 This triggers the release workflow which:
-1. Builds standalone tarballs for all 4 platforms (linux-x64, linux-arm64, darwin-x64, darwin-arm64)
+1. Builds standalone tarballs for 3 platforms (linux-x64, linux-arm64, darwin-arm64)
 2. Runs tests on each platform
 3. Generates SHA-256 checksums
 4. Creates a GitHub Release with all assets attached
+
+Once published, the install.sh one-liner will download the binary release automatically.
 
 ### Subsequent releases
 
@@ -184,6 +208,16 @@ git push origin v0.2.0
 ```
 
 The installer will automatically pick up the new release as "latest".
+
+### Supported release platforms
+
+| Platform | Runner | Notes |
+|----------|--------|-------|
+| linux-x64 | `ubuntu-latest` | Native build |
+| linux-arm64 | `ubuntu-latest` | Downloads arm64 Node binary; native modules use prebuild |
+| darwin-arm64 | `macos-14` | Native Apple Silicon build |
+
+macOS Intel (darwin-x64) is not included in the release matrix. Intel Mac users can install with `--from-source`.
 
 ---
 

@@ -21,8 +21,11 @@
 ## Quick Start
 
 ```bash
-# Install
+# Install (downloads binary release; falls back to from-source if no release exists)
 curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+
+# Or build from source explicitly (requires Node.js LTS 22 + pnpm)
+curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash -s -- --from-source
 
 # Initialize project
 motherbrain setup
@@ -36,6 +39,10 @@ motherbrain record --file examples/example_run_checkpoint.json
 # Recall context
 motherbrain recall "deploy staging"
 ```
+
+> **First-time setup for maintainers:** if no GitHub Release exists yet, create one so the
+> binary installer works: `git tag v0.1.0 && git push origin v0.1.0`.
+> See [Publishing releases](docs/installation.md#publishing-releases-for-maintainers).
 
 ---
 
