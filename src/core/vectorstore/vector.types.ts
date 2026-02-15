@@ -10,6 +10,8 @@ export interface VectorDoc {
   type: string;
   status: string;
   updated_at: string;
+  context_id: string;
+  scope_path: string;
 }
 
 export interface VectorSearchResult {
@@ -22,10 +24,13 @@ export interface VectorSearchResult {
   status: string;
   updated_at: string;
   similarity_score: number;
+  context_id: string;
+  scope_path: string;
 }
 
 export interface VectorFilter {
   kind?: VectorDocKind;
   type?: string;
   status?: string;
+  context_ids?: string[];
 }

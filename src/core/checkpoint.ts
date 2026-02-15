@@ -7,6 +7,7 @@ import { generateRunId } from '../utils/ids.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexRunVector } from './vectorIndex.js';
+import { resolveContext } from './context/context.resolver.js';
 
 export interface RecordResult {
   run_id: string;
@@ -17,12 +18,16 @@ export interface RecordResult {
 export async function recordCheckpoint(
   input: unknown,
   db?: Database.Database,
+  contextId?: string,
 ): Promise<RecordResult> {
   const parsed = RunCheckpointSchema.parse(input);
 
   const now = new Date();
   if (!parsed.run_id) parsed.run_id = generateRunId();
   if (!parsed.timestamp) parsed.timestamp = now.toISOString();
+
+  const database = db || getDb();
+  const effectiveContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
 
   const runId = parsed.run_id;
   const ts = new Date(parsed.timestamp);
@@ -37,11 +42,10 @@ export async function recordCheckpoint(
   writeFileSync(filePath, jsonStr, 'utf-8');
 
   // Index in SQLite
-  const database = db || getDb();
   await withLock('db-write', () => {
     const insertRun = database.prepare(`
-      INSERT OR REPLACE INTO runs (run_id, timestamp, agent_id, goal, summary, status, tags_json, raw_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO runs (run_id, timestamp, agent_id, goal, summary, status, tags_json, raw_json, context_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     insertRun.run(
       runId,
@@ -52,6 +56,7 @@ export async function recordCheckpoint(
       parsed.result.status,
       JSON.stringify(parsed.tags),
       jsonStr,
+      effectiveContextId,
     );
 
     // Link nodes
@@ -75,7 +80,7 @@ export async function recordCheckpoint(
   });
 
   // Index in vector store (non-blocking, best-effort)
-  indexRunVector(parsed).catch(() => {
+  indexRunVector(parsed, effectiveContextId).catch(() => {
     // Vector indexing failure must never break checkpoint recording
   });
 

@@ -43,6 +43,13 @@ export default class Recall extends Command {
       description: 'Recall mode',
       options: ['keyword', 'semantic', 'hybrid'],
     }),
+    context: Flags.string({
+      char: 'c',
+      description: 'Context ID or name for scoped recall',
+    }),
+    contexts: Flags.string({
+      description: 'Comma-separated context IDs for cross-combination recall',
+    }),
   };
 
   async run(): Promise<void> {
@@ -56,7 +63,19 @@ export default class Recall extends Command {
     const nodeTypes = flags.types ? flags.types.split(',').map((t) => t.trim()) : undefined;
     const mode = (flags.mode as RecallMode) ?? undefined;
 
-    const result = await recall(args.query, flags.limit, tags, nodeTypes, undefined, mode);
+    const contextIds = flags.contexts
+      ? flags.contexts.split(',').map((c) => c.trim())
+      : undefined;
+    const result = await recall(
+      args.query,
+      flags.limit,
+      tags,
+      nodeTypes,
+      undefined,
+      mode,
+      flags.context,
+      contextIds,
+    );
 
     if (flags.format === 'md') {
       this.log(formatRecallMarkdown(result));

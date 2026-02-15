@@ -27,14 +27,30 @@ describe('recordCheckpoint', () => {
         summary TEXT NOT NULL DEFAULT '',
         status TEXT NOT NULL DEFAULT 'success',
         tags_json TEXT NOT NULL DEFAULT '[]',
-        raw_json TEXT NOT NULL
+        raw_json TEXT NOT NULL,
+        context_id TEXT NOT NULL DEFAULT '__global__'
       );
       CREATE TABLE IF NOT EXISTS links (
         run_id TEXT NOT NULL,
         node_id TEXT NOT NULL,
         PRIMARY KEY (run_id, node_id)
       );
+      CREATE TABLE IF NOT EXISTS contexts (
+        context_id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        scope TEXT NOT NULL CHECK (scope IN ('global', 'vertical', 'project')),
+        parent_id TEXT,
+        scope_path TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        metadata_json TEXT NOT NULL DEFAULT '{}'
+      );
     `);
+    const now = new Date().toISOString();
+    testDb.prepare(
+      `INSERT OR IGNORE INTO contexts (context_id, name, scope, parent_id, scope_path, created_at, updated_at)
+       VALUES ('__global__', 'Global', 'global', NULL, '__global__', ?, ?)`
+    ).run(now, now);
   });
 
   afterEach(() => {

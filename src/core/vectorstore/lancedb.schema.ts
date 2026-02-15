@@ -24,5 +24,7 @@ export function seedRecord(dimensions: number = DEFAULT_DIMENSIONS): VectorDoc {
     type: '',
     status: '',
     updated_at: new Date().toISOString(),
+    context_id: '__global__',
+    scope_path: '__global__',
   };
 }

@@ -17,6 +17,10 @@ export default class Record extends Command {
       char: 'f',
       description: 'Path to checkpoint JSON file',
     }),
+    context: Flags.string({
+      char: 'c',
+      description: 'Context ID or name for scoped recording',
+    }),
   };
 
   async run(): Promise<void> {
@@ -43,7 +47,7 @@ export default class Record extends Command {
     }
 
     try {
-      const result = await recordCheckpoint(data);
+      const result = await recordCheckpoint(data, undefined, flags.context);
       this.log(JSON.stringify(result, null, 2));
     } catch (err) {
       if (err instanceof Error) {

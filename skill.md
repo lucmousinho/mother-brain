@@ -361,9 +361,63 @@ On validation errors, the response includes details:
 
 ---
 
+## Scoped Memory (Contexts)
+
+Mother Brain supports a 3-level hierarchy for memory isolation: **Global → Vertical → Project**.
+
+### Check Current Context
+
+Before recall, check if a context is active:
+
+```bash
+curl -s http://127.0.0.1:7337/contexts/current
+```
+
+### Context-Aware Recall
+
+Include `context_id` in recall to scope results:
+
+```bash
+# Recall within a specific project context
+curl -s "http://127.0.0.1:7337/recall?q=deploy&context_id=ctx_project_xxx"
+
+# Cross-combination: query across multiple contexts
+curl -s "http://127.0.0.1:7337/recall?q=deploy&context_ids=ctx_project_xxx,ctx_project_yyy"
+```
+
+### Context-Aware Recording
+
+Include `context_id` in record payloads:
+
+```bash
+curl -s -X POST http://127.0.0.1:7337/runs \
+  -H "Content-Type: application/json" \
+  -d '{"context_id": "ctx_project_xxx", "agent": {...}, ...}'
+```
+
+### X-MB-CONTEXT Header
+
+As an alternative to including `context_id` in every payload, set the `X-MB-CONTEXT` header:
+
+```bash
+curl -s -H "X-MB-CONTEXT: ctx_project_xxx" "http://127.0.0.1:7337/recall?q=deploy"
+```
+
+The header is used as a fallback when no `context_id` is present in the body or query parameters.
+
+### Inheritance Rules
+
+- **Project** recall returns: project + parent vertical + global data
+- **Vertical** recall returns: vertical + global data
+- **Global** recall (no context): returns all data
+- Sibling projects are isolated from each other
+
+---
+
 ## Summary
 
 1. **Always recall before acting** — get context, constraints, and suggested actions.
 2. **Always check policy before executing** — never bypass a denied action.
 3. **Always record after acting** — persist what you did for future agents.
 4. **Link your runs to knowledge nodes** — build the knowledge graph over time.
+5. **Use contexts for isolation** — scope memory by vertical and project to avoid cross-contamination.

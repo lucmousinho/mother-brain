@@ -2,6 +2,8 @@ import type Database from 'better-sqlite3';
 import type { KnowledgeNode } from './schemas.js';
 import { getDb } from '../db/database.js';
 import type { VectorSearchResult } from './vectorstore/vector.types.js';
+import { buildScopeFilter } from './scope/scope.guard.js';
+import type { ScopeFilter } from './scope/scope.types.js';
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -47,29 +49,34 @@ export async function recall(
   nodeTypes?: string[],
   db?: Database.Database,
   mode?: RecallMode,
+  contextId?: string,
+  contextIds?: string[],
 ): Promise<RecallResult> {
   const resolvedMode = mode ?? getDefaultMode();
+
+  const database = db || getDb();
+  const scopeFilter = buildScopeFilter(contextId, contextIds, database);
 
   // Attempt semantic/hybrid first, fall back to keyword on failure
   if (resolvedMode === 'semantic') {
     try {
-      return await semanticRecall(query, limit, tags, nodeTypes, db);
+      return await semanticRecall(query, limit, tags, nodeTypes, database, scopeFilter);
     } catch {
       // Fallback to keyword
-      return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+      return keywordRecall(query, limit, tags, nodeTypes, database, 'keyword', scopeFilter);
     }
   }
 
   if (resolvedMode === 'hybrid') {
     try {
-      return await hybridRecall(query, limit, tags, nodeTypes, db);
+      return await hybridRecall(query, limit, tags, nodeTypes, database, scopeFilter);
     } catch {
       // Fallback to keyword
-      return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+      return keywordRecall(query, limit, tags, nodeTypes, database, 'keyword', scopeFilter);
     }
   }
 
-  return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+  return keywordRecall(query, limit, tags, nodeTypes, database, 'keyword', scopeFilter);
 }
 
 /** Synchronous keyword-only recall — preserves original behaviour. */
@@ -79,11 +86,14 @@ export function recallKeyword(
   tags?: string[],
   nodeTypes?: string[],
   db?: Database.Database,
+  contextId?: string,
 ): RecallResult {
-  return keywordRecall(query, limit, tags, nodeTypes, db, 'keyword');
+  const database = db || getDb();
+  const scopeFilter = contextId ? buildScopeFilter(contextId, undefined, database) : undefined;
+  return keywordRecall(query, limit, tags, nodeTypes, database, 'keyword', scopeFilter);
 }
 
-// ── Keyword mode (original logic, untouched) ────────────────────────
+// ── Keyword mode ────────────────────────────────────────────────────
 
 function keywordRecall(
   query: string,
@@ -92,6 +102,7 @@ function keywordRecall(
   nodeTypes?: string[],
   db?: Database.Database,
   source: RecallResult['source'] = 'keyword',
+  scopeFilter?: ScopeFilter,
 ): RecallResult {
   const database = db || getDb();
   const keywords = query
@@ -100,12 +111,19 @@ function keywordRecall(
     .filter((w) => w.length > 1);
 
   // ── Search runs ──────────────────────────────────────────────
-  const allRuns = database
-    .prepare(
-      `SELECT run_id, timestamp, agent_id, goal, summary, status, tags_json, raw_json
-       FROM runs ORDER BY timestamp DESC LIMIT 200`,
-    )
-    .all() as {
+  let runsSql = `SELECT run_id, timestamp, agent_id, goal, summary, status, tags_json, raw_json
+     FROM runs WHERE 1=1`;
+  const runsParams: unknown[] = [];
+
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    runsSql += ` AND context_id IN (${placeholders})`;
+    runsParams.push(...scopeFilter.contextIds);
+  }
+
+  runsSql += ' ORDER BY timestamp DESC LIMIT 200';
+
+  const allRuns = database.prepare(runsSql).all(...runsParams) as {
     run_id: string;
     timestamp: string;
     agent_id: string;
@@ -153,11 +171,17 @@ function keywordRecall(
 
   // ── Search nodes ─────────────────────────────────────────────
   let nodesSql = `SELECT node_id, type, title, status, tags_json, raw_json FROM nodes WHERE 1=1`;
-  const nodeParams: string[] = [];
+  const nodeParams: unknown[] = [];
 
   if (nodeTypes && nodeTypes.length > 0) {
     nodesSql += ` AND type IN (${nodeTypes.map(() => '?').join(',')})`;
     nodeParams.push(...nodeTypes);
+  }
+
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    nodesSql += ` AND context_id IN (${placeholders})`;
+    nodeParams.push(...scopeFilter.contextIds);
   }
 
   nodesSql += ' ORDER BY node_id';
@@ -204,7 +228,7 @@ function keywordRecall(
     .slice(0, limit);
 
   // ── Constraints + next actions ───────────────────────────────
-  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database, scopeFilter);
 
   return {
     query,
@@ -225,19 +249,25 @@ async function semanticRecall(
   _tags?: string[],
   _nodeTypes?: string[],
   db?: Database.Database,
+  scopeFilter?: ScopeFilter,
 ): Promise<RecallResult> {
   const { embedText } = await import('./embeddings/embeddings.local.js');
   const { semanticSearch } = await import('./vectorstore/lancedb.store.js');
 
   const queryVec = await embedText(query);
   const topK = parseInt(process.env.MB_VECTOR_TOP_K || String(limit), 10);
-  const results = await semanticSearch(queryVec, topK * 2);
+  const results = await semanticSearch(
+    queryVec,
+    topK * 2,
+    undefined,
+    scopeFilter?.contextIds,
+  );
 
   const runs = vectorResultsToRuns(results.filter((r) => r.kind === 'run'), limit);
   const nodes = vectorResultsToNodes(results.filter((r) => r.kind === 'node'), limit);
 
   const database = db || getDb();
-  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database, scopeFilter);
 
   return {
     query,
@@ -258,16 +288,24 @@ async function hybridRecall(
   tags?: string[],
   nodeTypes?: string[],
   db?: Database.Database,
+  scopeFilter?: ScopeFilter,
 ): Promise<RecallResult> {
+  const database = db || getDb();
+
   // Get both keyword and semantic results
-  const kwResult = keywordRecall(query, limit * 2, tags, nodeTypes, db, 'hybrid');
+  const kwResult = keywordRecall(query, limit * 2, tags, nodeTypes, database, 'hybrid', scopeFilter);
 
   const { embedText } = await import('./embeddings/embeddings.local.js');
   const { semanticSearch } = await import('./vectorstore/lancedb.store.js');
 
   const queryVec = await embedText(query);
   const topK = parseInt(process.env.MB_VECTOR_TOP_K || String(limit), 10);
-  const vecResults = await semanticSearch(queryVec, topK * 2);
+  const vecResults = await semanticSearch(
+    queryVec,
+    topK * 2,
+    undefined,
+    scopeFilter?.contextIds,
+  );
 
   // Merge runs: combine keyword scores with similarity scores
   const runMap = new Map<string, RunSummary>();
@@ -313,8 +351,7 @@ async function hybridRecall(
     .sort((a, b) => b.score - a.score)
     .slice(0, limit);
 
-  const database = db || getDb();
-  const { applicable_constraints, suggested_next_actions } = gatherMeta(database);
+  const { applicable_constraints, suggested_next_actions } = gatherMeta(database, scopeFilter);
 
   return {
     query,
@@ -335,25 +372,46 @@ function getDefaultMode(): RecallMode {
   return 'keyword';
 }
 
-function gatherMeta(database: Database.Database): {
+function gatherMeta(
+  database: Database.Database,
+  scopeFilter?: ScopeFilter,
+): {
   applicable_constraints: string[];
   suggested_next_actions: string[];
 } {
-  const constraintNodes = database
-    .prepare(`SELECT raw_json FROM nodes WHERE type = 'constraint' AND status = 'active'`)
-    .all() as { raw_json: string }[];
+  let constraintSql = `SELECT raw_json FROM nodes WHERE type = 'constraint' AND status = 'active'`;
+  const constraintParams: unknown[] = [];
+
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    constraintSql += ` AND context_id IN (${placeholders})`;
+    constraintParams.push(...scopeFilter.contextIds);
+  }
+
+  const constraintNodes = database.prepare(constraintSql).all(...constraintParams) as {
+    raw_json: string;
+  }[];
 
   const applicable_constraints = constraintNodes.map((c) => {
     const node = JSON.parse(c.raw_json) as KnowledgeNode;
     return `[${node.id}] ${node.title}`;
   });
 
+  let taskSql = `SELECT raw_json FROM nodes WHERE type = 'task' AND status = 'active'`;
+  const taskParams: unknown[] = [];
+
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    taskSql += ` AND context_id IN (${placeholders})`;
+    taskParams.push(...scopeFilter.contextIds);
+  }
+
+  taskSql += ' ORDER BY node_id LIMIT 10';
+
   const suggested_next_actions: string[] = [];
-  const activeTaskNodes = database
-    .prepare(
-      `SELECT raw_json FROM nodes WHERE type = 'task' AND status = 'active' ORDER BY node_id LIMIT 10`,
-    )
-    .all() as { raw_json: string }[];
+  const activeTaskNodes = database.prepare(taskSql).all(...taskParams) as {
+    raw_json: string;
+  }[];
 
   for (const row of activeTaskNodes) {
     const node = JSON.parse(row.raw_json) as KnowledgeNode;

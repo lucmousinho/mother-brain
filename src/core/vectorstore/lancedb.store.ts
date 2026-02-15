@@ -31,6 +31,8 @@ interface LanceSearchRow {
   type: string;
   status: string;
   updated_at: string;
+  context_id: string;
+  scope_path: string;
   _distance: number;
 }
 
@@ -87,6 +89,7 @@ export async function semanticSearch(
   queryVec: number[],
   k: number = 10,
   filters?: VectorFilter,
+  contextIds?: string[],
 ): Promise<VectorSearchResult[]> {
   if (!tableInstance) await initVectorStore();
   const table = tableInstance!;
@@ -98,6 +101,12 @@ export async function semanticSearch(
   if (filters?.kind) clauses.push(`kind = '${filters.kind}'`);
   if (filters?.type) clauses.push(`type = '${filters.type}'`);
   if (filters?.status) clauses.push(`status = '${filters.status}'`);
+
+  // Context filtering
+  if (contextIds && contextIds.length > 0) {
+    const ctxClauses = contextIds.map((id) => `context_id = '${id}'`).join(' OR ');
+    clauses.push(`(${ctxClauses} OR context_id = '' OR context_id = '__global__')`);
+  }
 
   if (clauses.length > 0) {
     query = query.where(clauses.join(' AND '));
@@ -115,6 +124,8 @@ export async function semanticSearch(
     status: row.status,
     updated_at: row.updated_at,
     similarity_score: distanceToSimilarity(row._distance),
+    context_id: row.context_id ?? '',
+    scope_path: row.scope_path ?? '',
   }));
 }
 

@@ -42,6 +42,18 @@ CREATE TABLE IF NOT EXISTS audit (
   payload_json  TEXT NOT NULL DEFAULT '{}'
 );
 
+CREATE TABLE IF NOT EXISTS contexts (
+  context_id    TEXT PRIMARY KEY,
+  name          TEXT NOT NULL,
+  scope         TEXT NOT NULL CHECK (scope IN ('global', 'vertical', 'project')),
+  parent_id     TEXT,
+  scope_path    TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  metadata_json TEXT NOT NULL DEFAULT '{}',
+  FOREIGN KEY (parent_id) REFERENCES contexts(context_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_runs_timestamp ON runs(timestamp);
 CREATE INDEX IF NOT EXISTS idx_runs_agent ON runs(agent_id);
 CREATE INDEX IF NOT EXISTS idx_runs_status ON runs(status);
@@ -49,7 +61,41 @@ CREATE INDEX IF NOT EXISTS idx_nodes_type ON nodes(type);
 CREATE INDEX IF NOT EXISTS idx_nodes_status ON nodes(status);
 CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit(timestamp);
 CREATE INDEX IF NOT EXISTS idx_links_node ON links(node_id);
+CREATE INDEX IF NOT EXISTS idx_contexts_scope ON contexts(scope);
+CREATE INDEX IF NOT EXISTS idx_contexts_parent ON contexts(parent_id);
 `;
+
+function runMigrations(db: Database.Database): void {
+  const now = new Date().toISOString();
+
+  // Add context_id to runs
+  try {
+    db.exec(`ALTER TABLE runs ADD COLUMN context_id TEXT NOT NULL DEFAULT '__global__'`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // Add context_id to nodes
+  try {
+    db.exec(`ALTER TABLE nodes ADD COLUMN context_id TEXT NOT NULL DEFAULT '__global__'`);
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // Create indexes for context columns
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_runs_context ON runs(context_id)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_nodes_context ON nodes(context_id)`);
+
+  // Seed global context
+  db.prepare(
+    `INSERT OR IGNORE INTO contexts (context_id, name, scope, parent_id, scope_path, created_at, updated_at, metadata_json)
+     VALUES ('__global__', 'Global', 'global', NULL, '__global__', ?, ?, '{}')`,
+  ).run(now, now);
+
+  // Backfill any rows with empty context_id
+  db.exec(`UPDATE runs SET context_id = '__global__' WHERE context_id = ''`);
+  db.exec(`UPDATE nodes SET context_id = '__global__' WHERE context_id = ''`);
+}
 
 export function getDb(): Database.Database {
   if (_db) return _db;
@@ -61,6 +107,7 @@ export function getDb(): Database.Database {
   _db.pragma('journal_mode = WAL');
   _db.pragma('foreign_keys = ON');
   _db.exec(SCHEMA_SQL);
+  runMigrations(_db);
 
   return _db;
 }
@@ -77,5 +124,6 @@ export function getTestDb(): Database.Database {
   const db = new Database(':memory:');
   db.pragma('journal_mode = WAL');
   db.exec(SCHEMA_SQL);
+  runMigrations(db);
   return db;
 }

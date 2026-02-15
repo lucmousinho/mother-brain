@@ -59,6 +59,7 @@ export const RunCheckpointSchema = z.object({
   risk_flags: z.array(z.string()).default([]),
   links: LinksSchema.default({ nodes: [] }),
   tags: z.array(z.string()).default([]),
+  context_id: z.string().optional(),
 });
 
 export type RunCheckpoint = z.infer<typeof RunCheckpointSchema>;
@@ -94,6 +95,7 @@ export const NodeSchema = z.object({
   next_actions: z.array(z.string()).default([]),
   created_at: z.string().optional(),
   updated_at: z.string().optional(),
+  context_id: z.string().optional(),
 });
 
 export type KnowledgeNode = z.infer<typeof NodeSchema>;

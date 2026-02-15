@@ -31,6 +31,10 @@ export default class UpsertNode extends Command {
     }),
     tags: Flags.string({ description: 'Comma-separated tags' }),
     body: Flags.string({ description: 'Node body text' }),
+    context: Flags.string({
+      char: 'c',
+      description: 'Context ID or name for scoped node',
+    }),
   };
 
   async run(): Promise<void> {
@@ -60,7 +64,7 @@ export default class UpsertNode extends Command {
     }
 
     try {
-      const result = await upsertNode(data);
+      const result = await upsertNode(data, undefined, flags.context);
       this.log(JSON.stringify(result, null, 2));
     } catch (err) {
       if (err instanceof Error) {

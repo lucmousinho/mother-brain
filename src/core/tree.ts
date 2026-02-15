@@ -8,6 +8,7 @@ import { nodeToMarkdown } from '../utils/markdown.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexNodeVector } from './vectorIndex.js';
+import { resolveContext } from './context/context.resolver.js';
 
 export interface UpsertResult {
   node_id: string;
@@ -18,6 +19,7 @@ export interface UpsertResult {
 export async function upsertNode(
   input: unknown,
   db?: Database.Database,
+  contextId?: string,
 ): Promise<UpsertResult> {
   const parsed = NodeSchema.parse(input);
   const now = new Date().toISOString();
@@ -29,6 +31,8 @@ export async function upsertNode(
     .get(parsed.id) as { node_id: string } | undefined;
 
   const isCreate = !existing;
+
+  const effectiveContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
 
   if (!parsed.created_at) parsed.created_at = isCreate ? now : now;
   parsed.updated_at = now;
@@ -47,8 +51,8 @@ export async function upsertNode(
   // Index in SQLite
   await withLock('db-write', () => {
     const stmt = database.prepare(`
-      INSERT OR REPLACE INTO nodes (node_id, type, title, status, tags_json, raw_md, raw_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO nodes (node_id, type, title, status, tags_json, raw_md, raw_json, context_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       parsed.id,
@@ -58,11 +62,12 @@ export async function upsertNode(
       JSON.stringify(parsed.tags),
       md,
       JSON.stringify(parsed),
+      effectiveContextId,
     );
   });
 
   // Index in vector store (non-blocking, best-effort)
-  indexNodeVector(parsed).catch(() => {
+  indexNodeVector(parsed, effectiveContextId).catch(() => {
     // Vector indexing failure must never break node upsert
   });
 
@@ -86,10 +91,11 @@ export function listNodes(
   type?: string,
   status?: string,
   db?: Database.Database,
+  contextIds?: string[],
 ): KnowledgeNode[] {
   const database = db || getDb();
   let sql = 'SELECT raw_json FROM nodes WHERE 1=1';
-  const params: string[] = [];
+  const params: unknown[] = [];
 
   if (type) {
     sql += ' AND type = ?';
@@ -98,6 +104,11 @@ export function listNodes(
   if (status) {
     sql += ' AND status = ?';
     params.push(status);
+  }
+  if (contextIds && contextIds.length > 0) {
+    const placeholders = contextIds.map(() => '?').join(',');
+    sql += ` AND context_id IN (${placeholders})`;
+    params.push(...contextIds);
   }
 
   sql += ' ORDER BY node_id';

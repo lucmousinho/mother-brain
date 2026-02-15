@@ -11,3 +11,7 @@ export { default as 'api start' } from './api/start.js';
 export { default as 'embed-model warmup' } from './embed-model/warmup.js';
 export { default as 'embed-model info' } from './embed-model/info.js';
 export { default as 'self-update' } from './self-update.js';
+export { default as 'context create' } from './context/create.js';
+export { default as 'context use' } from './context/use.js';
+export { default as 'context current' } from './context/current.js';
+export { default as 'context list' } from './context/list.js';

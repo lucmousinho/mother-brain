@@ -7,6 +7,8 @@
 
 import type { RunCheckpoint, KnowledgeNode } from './schemas.js';
 import { isReady } from './embeddings/embeddings.local.js';
+import { GLOBAL_CONTEXT_ID } from './context/context.types.js';
+import { getContext } from './context/context.manager.js';
 
 function recallModeEnabled(): boolean {
   const mode = process.env.MB_RECALL_MODE || 'keyword';
@@ -36,11 +38,24 @@ function nodeToText(node: KnowledgeNode): string {
   return parts.join(' ').slice(0, 2000);
 }
 
-export async function indexRunVector(run: RunCheckpoint): Promise<void> {
+function lookupScopePath(contextId: string): string {
+  if (contextId === GLOBAL_CONTEXT_ID) return GLOBAL_CONTEXT_ID;
+  try {
+    const ctx = getContext(contextId);
+    return ctx?.scope_path ?? GLOBAL_CONTEXT_ID;
+  } catch {
+    return GLOBAL_CONTEXT_ID;
+  }
+}
+
+export async function indexRunVector(run: RunCheckpoint, contextId?: string): Promise<void> {
   if (!recallModeEnabled() && !isReady()) return;
 
   const { embedText } = await import('./embeddings/embeddings.local.js');
   const { upsertVectorDoc } = await import('./vectorstore/lancedb.store.js');
+
+  const effectiveContextId = contextId ?? GLOBAL_CONTEXT_ID;
+  const scopePath = lookupScopePath(effectiveContextId);
 
   const text = runToText(run);
   const vector = await embedText(text);
@@ -55,14 +70,19 @@ export async function indexRunVector(run: RunCheckpoint): Promise<void> {
     type: 'run',
     status: run.result.status,
     updated_at: run.timestamp ?? new Date().toISOString(),
+    context_id: effectiveContextId,
+    scope_path: scopePath,
   });
 }
 
-export async function indexNodeVector(node: KnowledgeNode): Promise<void> {
+export async function indexNodeVector(node: KnowledgeNode, contextId?: string): Promise<void> {
   if (!recallModeEnabled() && !isReady()) return;
 
   const { embedText } = await import('./embeddings/embeddings.local.js');
   const { upsertVectorDoc } = await import('./vectorstore/lancedb.store.js');
+
+  const effectiveContextId = contextId ?? GLOBAL_CONTEXT_ID;
+  const scopePath = lookupScopePath(effectiveContextId);
 
   const text = nodeToText(node);
   const vector = await embedText(text);
@@ -77,5 +97,7 @@ export async function indexNodeVector(node: KnowledgeNode): Promise<void> {
     type: node.type,
     status: node.status,
     updated_at: node.updated_at ?? new Date().toISOString(),
+    context_id: effectiveContextId,
+    scope_path: scopePath,
   });
 }
