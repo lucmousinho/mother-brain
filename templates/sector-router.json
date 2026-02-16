@@ -1,0 +1,30 @@
+{
+  "defaultSector": "general",
+  "routes": [
+    {
+      "matchAny": ["instagram", "postagem", "campanha", "marketing", "social"],
+      "sector": "marketing",
+      "roleTag": "marketing"
+    },
+    {
+      "matchAny": ["software", "código", "api", "frontend", "backend", "refactor", "bug"],
+      "sector": "engineering-fullstack",
+      "roleTag": "software-engineer-fullstack"
+    },
+    {
+      "matchAny": ["vendas", "crm", "pipeline", "lead", "outreach"],
+      "sector": "sales",
+      "roleTag": "sales"
+    },
+    {
+      "matchAny": ["financeiro", "invoice", "fatura", "custo", "budget", "pricing"],
+      "sector": "finance",
+      "roleTag": "finance"
+    },
+    {
+      "matchAny": ["operações", "sop", "processo", "runbook", "automação"],
+      "sector": "operations",
+      "roleTag": "operations"
+    }
+  ]
+}

@@ -80,6 +80,88 @@ See [Scoped Memory](docs/scoped-memory.md) for full details.
 
 ---
 
+## OpenClaw one-shot integration prompt
+
+Use one of the prompts below in another OpenClaw instance to perform full Mother Brain integration automatically.
+
+- Repo: <https://github.com/lucmousinho/mother-brain>
+- Skill (raw): <https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md>
+
+### Prompt (PT-BR)
+
+```text
+Abra este skill e execute o procedimento ponta a ponta, sem setup parcial:
+https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md
+
+Objetivo: integrar o Mother Brain automaticamente no core do OpenClaw (instalar se faltar, setup/init, iniciar API, configurar hooks, validar health e deixar tudo ativo).
+
+Referência do projeto:
+https://github.com/lucmousinho/mother-brain
+
+Ao final, retorne um checklist com PASS/FAIL de cada etapa e os caminhos exatos dos arquivos alterados.
+```
+
+### Prompt (EN)
+
+```text
+Open this skill and execute it end-to-end, with no partial setup:
+https://raw.githubusercontent.com/lucmousinho/mother-brain/main/skill.md
+
+Goal: fully integrate Mother Brain into OpenClaw core automatically (install if missing, setup/init, start API, wire hooks, validate health, and leave everything active).
+
+Project reference:
+https://github.com/lucmousinho/mother-brain
+
+After finishing, return a checklist with PASS/FAIL for each integration step and exact file paths touched.
+```
+
+---
+
+## Sector-based memory routing (OpenClaw)
+
+The auto-integration skill now supports sector memory routing by intent/command (e.g., marketing vs. engineering):
+
+- Router template: `templates/sector-router.json`
+- Sector files template: `templates/memory-sectors/README.md`
+- Runtime hook template: `templates/hooks/mb-sector-router.mjs`
+
+Example behavior:
+
+- “Generate an Instagram post” → `sector:marketing`
+- “Edit a software project” → `sector:engineering-fullstack`
+
+### Example `config.patch` (OpenClaw)
+
+Use this payload with the Gateway config patch flow to enable all Mother Brain command hooks:
+
+```json
+{
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "load": {
+        "extraDirs": [
+          "/home/lucas/.openclaw/workspace/hooks"
+        ]
+      },
+      "handlers": [
+        { "event": "command", "module": "mb-command-checkpoint.mjs" },
+        { "event": "command", "module": "mb-preaction-enrich.mjs" },
+        { "event": "command", "module": "mb-sector-router.mjs" }
+      ]
+    }
+  }
+}
+```
+
+Notes:
+
+- Keep existing handlers; append missing ones only (idempotent merge).
+- If your workspace path differs, change `extraDirs` accordingly.
+- After patch, restart/reload gateway if your environment does not auto-reload.
+
+---
+
 ## Documentation
 
 | Document | Description |
