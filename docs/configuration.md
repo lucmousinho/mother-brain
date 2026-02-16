@@ -26,6 +26,20 @@ cp .env.example .env
 | `MB_VECTOR_TOP_K` | `10` | Default top-K for vector search |
 | `MB_MODEL_CACHE_DIR` | `./storage/models` | Model weights cache directory |
 
+### OpenClaw Integration
+
+These variables are read by `OpenClawHooks.fromEnv()`. See [OpenClaw Integration](./openclaw-integration.md) for full details.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MB_URL` | `http://127.0.0.1:7337` | Mother Brain API base URL (client-side) |
+| `MB_TIMEOUT_MS` | `5000` | Per-request timeout in milliseconds |
+| `MB_HEALTH_CACHE_MS` | `30000` | How long a health probe result is cached |
+| `MB_ON_UNAVAILABLE` | `skip` | Behavior when MB is down: `skip` / `warn` / `throw` |
+| `MB_AGENT_ID` | `openclaw` | Default agent ID in checkpoints |
+| `MB_AGENT_NAME` | `OpenClaw Agent` | Default agent display name |
+| `MB_CONTEXT_ID` | _(empty)_ | Scoped-memory context ID |
+
 ## Semantic Recall (Offline)
 
 Mother Brain supports **100% offline semantic search** using local embeddings. No external APIs, no cloud services.

@@ -79,4 +79,4 @@ Agent
 3. **Execute**: Perform the action (only if policy allows it).
 4. **After acting**: Call `record` to persist the run checkpoint.
 
-See `src/adapters/openclaw/adapter.ts` for a reference mapping from OpenClaw events to Mother Brain checkpoints. See [Agent Skill](./skill.md) for the complete integration guide.
+See `src/adapters/openclaw/hooks.ts` and `src/adapters/openclaw/adapter.ts` for the OpenClaw lifecycle integration and event mapping. See [OpenClaw Integration](./openclaw-integration.md) for plug-and-play setup and [Agent Skill](./skill.md) for the complete integration guide.
