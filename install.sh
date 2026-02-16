@@ -616,6 +616,58 @@ install_tarball() {
   chmod +x "${bundle_binary}"
 }
 
+# Verify and auto-heal sharp native module inside bundle runtime
+ensure_sharp_runtime() {
+  local mb_home="$1"
+  local bundle_dir="${mb_home}/current"
+
+  if [ ! -d "${bundle_dir}" ]; then
+    log_warn "Bundle dir not found for sharp verification: ${bundle_dir}"
+    return 0
+  fi
+
+  local node_cmd
+  if [ -x "${bundle_dir}/runtime/node" ]; then
+    node_cmd="${bundle_dir}/runtime/node"
+  else
+    node_cmd="$(command -v node 2>/dev/null || true)"
+  fi
+
+  if [ -z "${node_cmd}" ]; then
+    log_warn "Node not found; skipping sharp runtime check."
+    return 0
+  fi
+
+  log_info "Verifying sharp runtime..."
+  if (cd "${bundle_dir}" && "${node_cmd}" -e "require('sharp'); console.log('sharp_ok')" >/dev/null 2>&1); then
+    log_ok "sharp runtime OK"
+    return 0
+  fi
+
+  log_warn "sharp runtime check failed; attempting auto-heal (rebuild/install)..."
+
+  if ! command -v npm >/dev/null 2>&1; then
+    log_warn "npm not available; cannot auto-heal sharp automatically."
+    log_warn "Run manually in ${bundle_dir}: npm rebuild sharp --verbose"
+    return 0
+  fi
+
+  (
+    cd "${bundle_dir}"
+    npm rebuild sharp --verbose || npm install --include=optional --foreground-scripts sharp
+  )
+
+  if (cd "${bundle_dir}" && "${node_cmd}" -e "require('sharp')" >/dev/null 2>&1); then
+    log_ok "sharp auto-heal successful"
+    return 0
+  fi
+
+  log_warn "sharp still failing after auto-heal."
+  log_warn "Manual fix in ${bundle_dir}:"
+  log_warn "  npm install --include=optional --foreground-scripts sharp"
+  return 0
+}
+
 # Symlink into PATH
 setup_symlink() {
   local mb_home="$1"
@@ -719,6 +771,7 @@ HELP
     version="${version:-${MB_VERSION:-main}}"
     [[ "${version}" != v* && "${version}" != "main" ]] && version="v${version}"
     if install_from_source "${version}" "${mb_home}"; then
+      ensure_sharp_runtime "${mb_home}"
       setup_symlink "${mb_home}" "${bin_dir}"
       print_success "${version:-dev}" "${mb_home}" "${bin_dir}"
     else
@@ -748,6 +801,7 @@ HELP
       log_warn "  git tag v0.1.0 && git push origin v0.1.0"
       log_warn ""
       if install_from_source "main" "${mb_home}"; then
+        ensure_sharp_runtime "${mb_home}"
         setup_symlink "${mb_home}" "${bin_dir}"
         print_success "dev (from source)" "${mb_home}" "${bin_dir}"
       else
@@ -774,6 +828,7 @@ HELP
     fi
   fi
 
+  ensure_sharp_runtime "${mb_home}"
   setup_symlink "${mb_home}" "${bin_dir}"
   print_success "${version}" "${mb_home}" "${bin_dir}"
 }
