@@ -76,6 +76,16 @@ cp -r "${PROJECT_DIR}/bin" "${BUNDLE_DIR}/bin"
 # package.json (needed by oclif for config)
 cp "${PROJECT_DIR}/package.json" "${BUNDLE_DIR}/package.json"
 
+# Stamp the release version so `motherbrain --version` reports the correct tag
+SEMVER="${VERSION#v}"
+node -e "
+  const fs = require('fs');
+  const p = process.argv[1];
+  const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+  j.version = process.argv[2];
+  fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+" "${BUNDLE_DIR}/package.json" "${SEMVER}"
+
 # node_modules (production only)
 cd "${PROJECT_DIR}"
 # Use a clean production install in the bundle

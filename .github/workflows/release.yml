@@ -50,6 +50,9 @@ jobs:
         with:
           version: 9
 
+      - name: Verify tag matches package version
+        run: bash scripts/verify-release-version.sh
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 

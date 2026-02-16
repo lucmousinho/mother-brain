@@ -539,6 +539,18 @@ install_from_source() {
   cp "${source_dir}/package.json" "${mb_home}/current/package.json"
   cp -r "${source_dir}/node_modules" "${mb_home}/current/node_modules"
 
+  # Stamp version into package.json so --version reports the correct tag
+  if [ -n "${version}" ] && [ "${version}" != "main" ]; then
+    local semver="${version#v}"
+    node -e "
+      const fs = require('fs');
+      const p = process.argv[1];
+      const j = JSON.parse(fs.readFileSync(p, 'utf8'));
+      j.version = process.argv[2];
+      fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+    " "${mb_home}/current/package.json" "${semver}"
+  fi
+
   # Create wrapper that uses system node (no bundled runtime for from-source)
   local wrapper="${mb_home}/current/motherbrain"
   cat > "${wrapper}" << 'WRAPPER'

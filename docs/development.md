@@ -30,6 +30,22 @@ pnpm lint
 pnpm format
 ```
 
+## Release version guard
+
+Tag releases must match `package.json` version.
+
+Example:
+- `package.json` = `0.1.2`
+- tag = `v0.1.2`
+
+CI enforces this via:
+
+```bash
+bash scripts/verify-release-version.sh
+```
+
+If versions mismatch, the release workflow fails before building assets.
+
 ## Project Structure
 
 ```
