@@ -1,22 +1,12 @@
 import type { RunCheckpoint } from '../../core/schemas.js';
+import type { OpenClawEvent } from './types.js';
 
 /**
  * Maps an OpenClaw agent event to a Mother Brain RunCheckpoint.
- * This is a reference adapter — extend for your OpenClaw integration.
+ *
+ * The `OpenClawEvent` type is defined in `./types.ts` so it can be shared
+ * across the mapper and the lifecycle hooks without circular imports.
  */
-export interface OpenClawEvent {
-  type: string;
-  agent_id: string;
-  session: string;
-  timestamp: string;
-  action: {
-    tool: string;
-    command?: string;
-    result?: string;
-  };
-  memory_refs?: string[];
-}
-
 export function openClawToCheckpoint(event: OpenClawEvent): Omit<RunCheckpoint, 'run_id'> {
   return {
     version: 'v1',

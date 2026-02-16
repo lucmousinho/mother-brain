@@ -3,6 +3,17 @@
   "version": "0.1.0",
   "description": "CLI + local API for agent run checkpoints, knowledge tree, recall, and policy gate",
   "type": "module",
+  "exports": {
+    ".": "./dist/api/server.js",
+    "./client": "./dist/client/index.js",
+    "./openclaw": "./dist/adapters/openclaw/index.js"
+  },
+  "typesVersions": {
+    "*": {
+      "client": ["dist/client/index.d.ts"],
+      "openclaw": ["dist/adapters/openclaw/index.d.ts"]
+    }
+  },
   "bin": {
     "motherbrain": "./bin/run.js"
   },

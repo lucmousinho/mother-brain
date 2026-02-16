@@ -89,6 +89,7 @@ See [Scoped Memory](docs/scoped-memory.md) for full details.
 | [CLI Reference](docs/cli.md) | All commands with flags and examples |
 | [API Reference](docs/api.md) | REST endpoints and schemas |
 | [Agent Skill](docs/skill.md) | Integration guide for AI agents |
+| [OpenClaw Integration](docs/openclaw-integration.md) | Use Mother Brain as OpenClaw's memory backbone |
 | [Concepts](docs/concepts.md) | Recall modes, embedding pipeline |
 | [Scoped Memory](docs/scoped-memory.md) | Hierarchical context system |
 | [Configuration](docs/configuration.md) | Environment variables |
