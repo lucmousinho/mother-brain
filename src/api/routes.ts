@@ -76,6 +76,7 @@ export function registerRoutes(app: FastifyInstance): void {
       tags?: string;
       types?: string;
       mode?: string;
+      context?: string;
       context_id?: string;
       context_ids?: string;
     };
@@ -90,9 +91,9 @@ export function registerRoutes(app: FastifyInstance): void {
     const nodeTypes = request.query.types ? request.query.types.split(',') : undefined;
     const mode = validateMode(request.query.mode);
 
-    // Context from query params or header
+    // Context from query params or header (accept both context and context_id)
     const contextId =
-      request.query.context_id ||
+      request.query.context_id || request.query.context ||
       (typeof request.headers['x-mb-context'] === 'string'
         ? request.headers['x-mb-context']
         : undefined);

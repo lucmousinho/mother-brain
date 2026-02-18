@@ -8,6 +8,20 @@ import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexRunVector } from './vectorIndex.js';
 import { resolveContext } from './context/context.resolver.js';
+import { getContext, getContextByName } from './context/context.manager.js';
+
+/**
+ * Resolve a context name or ID to the canonical context_id.
+ * Tries lookup by ID first, then by name, falls back to the raw value.
+ */
+function resolveContextId(nameOrId: string | undefined, db: Database.Database): string | null {
+  if (!nameOrId) return null;
+  const byId = getContext(nameOrId, db);
+  if (byId) return byId.context_id;
+  const byName = getContextByName(nameOrId, db);
+  if (byName) return byName.context_id;
+  return nameOrId;
+}
 
 export interface RecordResult {
   run_id: string;
@@ -27,7 +41,8 @@ export async function recordCheckpoint(
   if (!parsed.timestamp) parsed.timestamp = now.toISOString();
 
   const database = db || getDb();
-  const effectiveContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
+  const rawContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
+  const effectiveContextId = resolveContextId(rawContextId, database) ?? resolveContext(undefined, database);
 
   const runId = parsed.run_id;
   const ts = new Date(parsed.timestamp);
