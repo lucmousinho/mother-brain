@@ -1,7 +1,7 @@
 import { Command, Flags } from '@oclif/core';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import { getDataDir, getProjectRoot, isInitialized } from '../../utils/paths.js';
 
 export default class Enable extends Command {
@@ -36,10 +36,10 @@ export default class Enable extends Command {
       this.log('Not a git repository (optional, continuing).');
     }
 
-    // Optional branch
+    // Optional branch (use execFileSync to avoid shell injection)
     if (isGit && flags.branch) {
       try {
-        execSync(`git rev-parse --verify ${flags.branch}`, { cwd: root, stdio: 'pipe' });
+        execFileSync('git', ['rev-parse', '--verify', flags.branch], { cwd: root, stdio: 'pipe' });
         this.log(`Branch "${flags.branch}" already exists.`);
       } catch {
         this.log(`Branch "${flags.branch}" does not exist. You can create it when needed.`);

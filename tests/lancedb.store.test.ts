@@ -44,9 +44,13 @@ describe('vector types', () => {
       type: 'run',
       status: 'success',
       updated_at: new Date().toISOString(),
+      context_id: '__global__',
+      scope_path: '__global__',
     };
 
     expect(doc.kind).toBe('run');
     expect(doc.vector).toHaveLength(384);
+    expect(doc.context_id).toBe('__global__');
+    expect(doc.scope_path).toBe('__global__');
   });
 });

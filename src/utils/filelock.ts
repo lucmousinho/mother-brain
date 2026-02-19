@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, unlinkSync, existsSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, writeSync, unlinkSync, readFileSync, openSync, closeSync, constants } from 'node:fs';
 import { join } from 'node:path';
 import { getLocksDir } from './paths.js';
 
@@ -9,24 +9,38 @@ export function acquireLock(name: string): boolean {
   mkdirSync(locksDir, { recursive: true });
   const lockFile = join(locksDir, `${name}.lock`);
 
-  if (existsSync(lockFile)) {
+  // Attempt atomic create via O_CREAT | O_EXCL — fails if file exists
+  try {
+    const fd = openSync(lockFile, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL);
+    const buf = Buffer.from(String(Date.now()));
+    writeSync(fd, buf);
+    closeSync(fd);
+    return true;
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+  }
+
+  // File exists — check if it is stale
+  try {
     const content = readFileSync(lockFile, 'utf-8');
     const ts = parseInt(content, 10);
     if (!isNaN(ts) && Date.now() - ts < STALE_LOCK_MS) {
       return false;
     }
-    // Stale lock, remove it
+    // Stale lock — remove and retry atomically
     unlinkSync(lockFile);
+    return acquireLock(name);
+  } catch {
+    return false;
   }
-
-  writeFileSync(lockFile, String(Date.now()), { flag: 'wx' });
-  return true;
 }
 
 export function releaseLock(name: string): void {
   const lockFile = join(getLocksDir(), `${name}.lock`);
-  if (existsSync(lockFile)) {
+  try {
     unlinkSync(lockFile);
+  } catch {
+    // Lock file may already be removed
   }
 }
 

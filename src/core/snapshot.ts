@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import type { KnowledgeNode } from './schemas.js';
 import { getSnapshotsDir } from '../utils/paths.js';
 import { getDb } from '../db/database.js';
+import { buildScopeFilter } from './scope/scope.guard.js';
 
 export interface SnapshotResult {
   context_path: string;
@@ -13,19 +14,38 @@ export interface SnapshotResult {
   total_runs: number;
 }
 
-export function generateSnapshot(db?: Database.Database): SnapshotResult {
+export function generateSnapshot(
+  db?: Database.Database,
+  contextId?: string,
+): SnapshotResult {
   const database = db || getDb();
   const snapshotsDir = getSnapshotsDir();
   mkdirSync(snapshotsDir, { recursive: true });
 
-  // Gather data
-  const nodes = database
-    .prepare('SELECT raw_json FROM nodes ORDER BY type, node_id')
-    .all() as { raw_json: string }[];
+  const scopeFilter = buildScopeFilter(contextId, undefined, database);
 
-  const runs = database
-    .prepare('SELECT run_id, timestamp, agent_id, goal, summary, status FROM runs ORDER BY timestamp DESC LIMIT 50')
-    .all() as {
+  // Gather data (scoped to context)
+  let nodesSql = 'SELECT raw_json FROM nodes WHERE 1=1';
+  const nodesParams: unknown[] = [];
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    nodesSql += ` AND context_id IN (${placeholders})`;
+    nodesParams.push(...scopeFilter.contextIds);
+  }
+  nodesSql += ' ORDER BY type, node_id';
+
+  const nodes = database.prepare(nodesSql).all(...nodesParams) as { raw_json: string }[];
+
+  let runsSql = 'SELECT run_id, timestamp, agent_id, goal, summary, status FROM runs WHERE 1=1';
+  const runsParams: unknown[] = [];
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    runsSql += ` AND context_id IN (${placeholders})`;
+    runsParams.push(...scopeFilter.contextIds);
+  }
+  runsSql += ' ORDER BY timestamp DESC LIMIT 50';
+
+  const runs = database.prepare(runsSql).all(...runsParams) as {
     run_id: string;
     timestamp: string;
     agent_id: string;

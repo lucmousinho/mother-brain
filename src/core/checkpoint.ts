@@ -7,21 +7,7 @@ import { generateRunId } from '../utils/ids.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexRunVector } from './vectorIndex.js';
-import { resolveContext } from './context/context.resolver.js';
-import { getContext, getContextByName } from './context/context.manager.js';
-
-/**
- * Resolve a context name or ID to the canonical context_id.
- * Tries lookup by ID first, then by name, falls back to the raw value.
- */
-function resolveContextId(nameOrId: string | undefined, db: Database.Database): string | null {
-  if (!nameOrId) return null;
-  const byId = getContext(nameOrId, db);
-  if (byId) return byId.context_id;
-  const byName = getContextByName(nameOrId, db);
-  if (byName) return byName.context_id;
-  return nameOrId;
-}
+import { resolveContext, resolveContextId } from './context/context.resolver.js';
 
 export interface RecordResult {
   run_id: string;
@@ -95,8 +81,8 @@ export async function recordCheckpoint(
   });
 
   // Index in vector store (non-blocking, best-effort)
-  indexRunVector(parsed, effectiveContextId).catch(() => {
-    // Vector indexing failure must never break checkpoint recording
+  indexRunVector(parsed, effectiveContextId).catch((err) => {
+    console.warn('[mother-brain] Vector indexing failed for run', runId, err?.message ?? err);
   });
 
   return {

@@ -105,6 +105,20 @@ export function getAncestorChain(
   return chain;
 }
 
+/**
+ * Resolve a context name or ID to the canonical context_id.
+ * Tries lookup by ID first, then by name, falls back to the raw value.
+ */
+export function resolveContextId(nameOrId: string | undefined, db?: Database.Database): string | null {
+  if (!nameOrId) return null;
+  const database = db || getDb();
+  const byId = getContext(nameOrId, database);
+  if (byId) return byId.context_id;
+  const byName = getContextByName(nameOrId, database);
+  if (byName) return byName.context_id;
+  return nameOrId;
+}
+
 export function resolveContextScope(
   contextIds: string[],
   db?: Database.Database,

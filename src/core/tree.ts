@@ -8,7 +8,7 @@ import { nodeToMarkdown } from '../utils/markdown.js';
 import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexNodeVector } from './vectorIndex.js';
-import { resolveContext } from './context/context.resolver.js';
+import { resolveContext, resolveContextId } from './context/context.resolver.js';
 
 export interface UpsertResult {
   node_id: string;
@@ -32,7 +32,8 @@ export async function upsertNode(
 
   const isCreate = !existing;
 
-  const effectiveContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
+  const rawContextId = contextId ?? parsed.context_id ?? resolveContext(undefined, database);
+  const effectiveContextId = resolveContextId(rawContextId, database) ?? resolveContext(undefined, database);
 
   if (!parsed.created_at) parsed.created_at = isCreate ? now : now;
   parsed.updated_at = now;
@@ -67,8 +68,8 @@ export async function upsertNode(
   });
 
   // Index in vector store (non-blocking, best-effort)
-  indexNodeVector(parsed, effectiveContextId).catch(() => {
-    // Vector indexing failure must never break node upsert
+  indexNodeVector(parsed, effectiveContextId).catch((err) => {
+    console.warn('[mother-brain] Vector indexing failed for node', parsed.id, err?.message ?? err);
   });
 
   return {
@@ -78,9 +79,22 @@ export async function upsertNode(
   };
 }
 
-export function getNode(nodeId: string, db?: Database.Database): KnowledgeNode | null {
+export function getNode(
+  nodeId: string,
+  db?: Database.Database,
+  contextIds?: string[],
+): KnowledgeNode | null {
   const database = db || getDb();
-  const row = database.prepare('SELECT raw_json FROM nodes WHERE node_id = ?').get(nodeId) as
+  let sql = 'SELECT raw_json FROM nodes WHERE node_id = ?';
+  const params: unknown[] = [nodeId];
+
+  if (contextIds && contextIds.length > 0) {
+    const placeholders = contextIds.map(() => '?').join(',');
+    sql += ` AND context_id IN (${placeholders})`;
+    params.push(...contextIds);
+  }
+
+  const row = database.prepare(sql).all(...params)[0] as
     | { raw_json: string }
     | undefined;
   if (!row) return null;

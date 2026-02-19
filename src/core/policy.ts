@@ -35,8 +35,13 @@ function matchesPattern(
   if (pattern === '*') return true;
 
   if (pattern.includes('*')) {
-    const regex = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$', 'i');
-    return regex.test(value);
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*?');
+    const regex = new RegExp('^' + escaped + '$', 'i');
+    try {
+      return regex.test(value.slice(0, 1000));
+    } catch {
+      return false;
+    }
   }
 
   if (dimension === 'path') {

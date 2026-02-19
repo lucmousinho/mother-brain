@@ -6,6 +6,7 @@ import { getCheckpointsDir, getSnapshotsDir } from '../utils/paths.js';
 import { getDb } from '../db/database.js';
 import { upsertNode } from './tree.js';
 import { generateNodeId } from '../utils/ids.js';
+import { buildScopeFilter } from './scope/scope.guard.js';
 
 export interface CompactResult {
   day: string;
@@ -14,7 +15,11 @@ export interface CompactResult {
   summary_path: string;
 }
 
-export async function compactDay(day: string, db?: Database.Database): Promise<CompactResult> {
+export async function compactDay(
+  day: string,
+  db?: Database.Database,
+  contextId?: string,
+): Promise<CompactResult> {
   const database = db || getDb();
 
   // Parse day YYYY-MM-DD
@@ -30,19 +35,32 @@ export async function compactDay(day: string, db?: Database.Database): Promise<C
   if (existsSync(dayDir)) {
     const files = readdirSync(dayDir).filter((f) => f.endsWith('.json'));
     for (const file of files) {
-      const content = readFileSync(join(dayDir, file), 'utf-8');
-      const run = JSON.parse(content) as RunCheckpoint;
-      const runDate = new Date(run.timestamp || '').toISOString().slice(0, 10);
-      if (runDate === day) {
-        runs.push(run);
+      try {
+        const content = readFileSync(join(dayDir, file), 'utf-8');
+        const run = JSON.parse(content) as RunCheckpoint;
+        const runDate = new Date(run.timestamp || '').toISOString().slice(0, 10);
+        if (runDate === day) {
+          runs.push(run);
+        }
+      } catch {
+        // Skip malformed checkpoint files instead of crashing compaction
       }
     }
   }
 
-  // Also query from DB for completeness
+  // Also query from DB for completeness (scoped to context)
+  const scopeFilter = buildScopeFilter(contextId, undefined, database);
+  let dbRunsSql = `SELECT raw_json FROM runs WHERE timestamp LIKE ?`;
+  const dbRunsParams: unknown[] = [`${day}%`];
+  if (scopeFilter) {
+    const placeholders = scopeFilter.contextIds.map(() => '?').join(',');
+    dbRunsSql += ` AND context_id IN (${placeholders})`;
+    dbRunsParams.push(...scopeFilter.contextIds);
+  }
+  dbRunsSql += ` ORDER BY timestamp`;
   const dbRuns = database
-    .prepare(`SELECT raw_json FROM runs WHERE timestamp LIKE ? ORDER BY timestamp`)
-    .all(`${day}%`) as { raw_json: string }[];
+    .prepare(dbRunsSql)
+    .all(...dbRunsParams) as { raw_json: string }[];
 
   for (const row of dbRuns) {
     const run = JSON.parse(row.raw_json) as RunCheckpoint;
@@ -106,6 +124,7 @@ export async function compactDay(day: string, db?: Database.Database): Promise<C
         next_actions: [],
       },
       database,
+      contextId,
     );
     patternsCreated.push(patternId);
   }

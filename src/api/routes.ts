@@ -5,7 +5,9 @@ import { recall, type RecallMode } from '../core/recall.js';
 import { policyCheck } from '../core/policy.js';
 import { PolicyCheckSchema } from '../core/schemas.js';
 import { ZodError } from 'zod';
-import { createContext, getContext, listContexts } from '../core/context/context.manager.js';
+import { createContext, getContext, getContextByName, listContexts, deleteContext } from '../core/context/context.manager.js';
+import { compactDay } from '../core/compact.js';
+import { generateSnapshot } from '../core/snapshot.js';
 import {
   getActiveContext,
   setActiveContext,
@@ -81,28 +83,32 @@ export function registerRoutes(app: FastifyInstance): void {
       context_ids?: string;
     };
   }>('/recall', async (request, reply) => {
-    const q = request.query.q;
-    if (!q) {
-      return reply.code(400).send({ error: 'Query parameter "q" is required' });
+    try {
+      const q = request.query.q;
+      if (!q) {
+        return reply.code(400).send({ error: 'Query parameter "q" is required' });
+      }
+
+      const limit = request.query.limit ? parseInt(request.query.limit, 10) : 10;
+      const tags = request.query.tags ? request.query.tags.split(',') : undefined;
+      const nodeTypes = request.query.types ? request.query.types.split(',') : undefined;
+      const mode = validateMode(request.query.mode);
+
+      const contextId =
+        request.query.context_id || request.query.context ||
+        (typeof request.headers['x-mb-context'] === 'string'
+          ? request.headers['x-mb-context']
+          : undefined);
+      const contextIds = request.query.context_ids
+        ? request.query.context_ids.split(',')
+        : undefined;
+
+      const result = await recall(q, limit, tags, nodeTypes, undefined, mode, contextId, contextIds);
+      return result;
+    } catch (err) {
+      request.log.error(err, 'Recall failed');
+      return reply.code(500).send({ error: 'Internal recall error' });
     }
-
-    const limit = request.query.limit ? parseInt(request.query.limit, 10) : 10;
-    const tags = request.query.tags ? request.query.tags.split(',') : undefined;
-    const nodeTypes = request.query.types ? request.query.types.split(',') : undefined;
-    const mode = validateMode(request.query.mode);
-
-    // Context from query params or header (accept both context and context_id)
-    const contextId =
-      request.query.context_id || request.query.context ||
-      (typeof request.headers['x-mb-context'] === 'string'
-        ? request.headers['x-mb-context']
-        : undefined);
-    const contextIds = request.query.context_ids
-      ? request.query.context_ids.split(',')
-      : undefined;
-
-    const result = await recall(q, limit, tags, nodeTypes, undefined, mode, contextId, contextIds);
-    return result;
   });
 
   // ── Policy Check ───────────────────────────────────────────────
@@ -146,12 +152,17 @@ export function registerRoutes(app: FastifyInstance): void {
 
   app.get<{
     Querystring: { scope?: string; parent?: string };
-  }>('/contexts', async (request) => {
-    const contexts = listContexts(
-      request.query.scope as ContextScope | undefined,
-      request.query.parent,
-    );
-    return contexts;
+  }>('/contexts', async (request, reply) => {
+    try {
+      const contexts = listContexts(
+        request.query.scope as ContextScope | undefined,
+        request.query.parent,
+      );
+      return contexts;
+    } catch (err) {
+      request.log.error(err, 'Failed to list contexts');
+      return reply.code(500).send({ error: 'Failed to list contexts' });
+    }
   });
 
   app.get('/contexts/current', async () => {
@@ -180,11 +191,56 @@ export function registerRoutes(app: FastifyInstance): void {
   app.get<{
     Params: { id: string };
   }>('/contexts/:id', async (request, reply) => {
-    const context = getContext(request.params.id);
+    const context = getContext(request.params.id) ?? getContextByName(request.params.id);
     if (!context) {
       return reply.code(404).send({ error: 'Context not found' });
     }
     return context;
+  });
+
+  // ── Delete Context ──────────────────────────────────────────────
+  app.delete<{
+    Params: { id: string };
+  }>('/contexts/:id', async (request, reply) => {
+    try {
+      await deleteContext(request.params.id);
+      return reply.code(204).send();
+    } catch (err) {
+      if (err instanceof Error) {
+        return reply.code(400).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // ── Compact ───────────────────────────────────────────────────
+  app.post<{
+    Body: { day: string; context_id?: string };
+  }>('/compact', async (request, reply) => {
+    try {
+      const contextId = request.body.context_id ?? extractContextFromRequest(request);
+      const result = await compactDay(request.body.day, undefined, contextId);
+      return reply.code(200).send(result);
+    } catch (err) {
+      if (err instanceof Error) {
+        return reply.code(400).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // ── Snapshot ──────────────────────────────────────────────────
+  app.post<{
+    Body: { context_id?: string };
+  }>('/snapshot', async (request, reply) => {
+    try {
+      const contextId = request.body?.context_id ?? extractContextFromRequest(request);
+      const result = generateSnapshot(undefined, contextId);
+      return reply.code(200).send(result);
+    } catch (err) {
+      request.log.error(err, 'Snapshot generation failed');
+      return reply.code(500).send({ error: 'Snapshot generation failed' });
+    }
   });
 }
 

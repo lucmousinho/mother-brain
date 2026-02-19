@@ -49,6 +49,17 @@ function getVectorPath(): string {
   return resolve(getStorageDir(), 'vector');
 }
 
+/**
+ * Escape a string value for use in LanceDB SQL-like filter clauses.
+ * Prevents injection by rejecting values with single quotes or backslashes.
+ */
+function sanitizeFilterValue(value: string): string {
+  if (/['\\]/.test(value)) {
+    throw new Error(`Invalid filter value: contains disallowed characters`);
+  }
+  return value;
+}
+
 // ── Public API ──────────────────────────────────────────────────────
 
 export async function initVectorStore(): Promise<void> {
@@ -77,7 +88,7 @@ export async function upsertVectorDoc(doc: VectorDoc): Promise<void> {
 
   // Delete existing record with same id, then add new one
   try {
-    await table.delete(`id = '${doc.id}'`);
+    await table.delete(`id = '${sanitizeFilterValue(doc.id)}'`);
   } catch {
     // Row may not exist — safe to ignore
   }
@@ -96,15 +107,15 @@ export async function semanticSearch(
 
   let query = table.search(queryVec).limit(k + 5); // fetch extra to compensate for seed/filter
 
-  // Build WHERE clause
+  // Build WHERE clause with sanitized values
   const clauses: string[] = ["id != '__seed__'"];
-  if (filters?.kind) clauses.push(`kind = '${filters.kind}'`);
-  if (filters?.type) clauses.push(`type = '${filters.type}'`);
-  if (filters?.status) clauses.push(`status = '${filters.status}'`);
+  if (filters?.kind) clauses.push(`kind = '${sanitizeFilterValue(filters.kind)}'`);
+  if (filters?.type) clauses.push(`type = '${sanitizeFilterValue(filters.type)}'`);
+  if (filters?.status) clauses.push(`status = '${sanitizeFilterValue(filters.status)}'`);
 
   // Context filtering
   if (contextIds && contextIds.length > 0) {
-    const ctxClauses = contextIds.map((id) => `context_id = '${id}'`).join(' OR ');
+    const ctxClauses = contextIds.map((id) => `context_id = '${sanitizeFilterValue(id)}'`).join(' OR ');
     clauses.push(`(${ctxClauses} OR context_id = '' OR context_id = '__global__')`);
   }
 
