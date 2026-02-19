@@ -1,353 +1,411 @@
 ---
 name: motherbrain
-description: End-to-end automatic Mother Brain integration for OpenClaw (install, hook wiring, health checks, and auto-usage).
-version: 0.2.0
+description: Long-term structured memory for OpenClaw agents. Record actions, recall context, manage scoped memory with hierarchical isolation. Use when you need to remember past work, record what you did, or organize memory by project/vertical.
 homepage: https://github.com/lucmousinho/mother-brain
-metadata:
-  integration_mode: auto
-  api_base: http://127.0.0.1:7337
-  auth_header: X-MB-TOKEN
-  cli_binary: motherbrain
-  port: 7337
+metadata: { "openclaw": { "emoji": "🧠", "requires": { "bins": ["motherbrain", "curl", "python3"] } } }
 ---
 
-# Mother Brain — OpenClaw Auto-Integration Skill
+# Mother Brain — Structured Long-Term Memory for OpenClaw
 
-Use this skill when the user asks to integrate Mother Brain with OpenClaw automatically.
+Mother Brain (MB) is a local-first memory system that gives OpenClaw agents persistent, structured, scoped memory across sessions. It stores **run checkpoints** (what you did), **knowledge nodes** (what you know), and **policies** (constraints), all searchable via keyword + semantic hybrid recall.
 
-## Objective
+## Why
 
-When this file is read by an OpenClaw agent, the agent must:
+OpenClaw agents wake up fresh every session. Local files (`MEMORY.md`, `memory/*.md`) help, but they're flat, unsearchable, and unscoped. Mother Brain adds:
 
-1. Install Mother Brain if missing
-2. Initialize Mother Brain structure
-3. Ensure API is running
-4. Wire OpenClaw hooks for:
-   - automatic command checkpoint recording
-   - pre-action recall enrichment
-5. Validate end-to-end integration
-6. Leave the system active and usable immediately
+- **Structured storage** — checkpoints with goals, summaries, tags, timestamps
+- **Hybrid search** — keyword + vector semantic (local embeddings, no API key needed)
+- **Scoped memory** — hierarchical contexts (global → vertical → project)
+- **Isolation** — agents/projects only see their own context + ancestors
+- **Compaction** — daily summaries, pattern detection, snapshot generation
 
-The workflow must be idempotent (safe to run more than once).
+## Architecture
 
----
-
-## Integration Contract (Must Follow)
-
-- Prefer non-interactive commands.
-- Do not block user reply if Mother Brain is temporarily unavailable.
-- Keep hooks fail-safe (`try/catch`, short timeout).
-- Preserve existing OpenClaw hooks and append Mother Brain handlers if absent.
-- Never duplicate handlers in config.
-
----
-
-## Step 0 — Resolve workspace and paths
-
-Use OpenClaw workspace when available; default to:
-
-- Workspace: `/home/lucas/.openclaw/workspace`
-- OpenClaw config: `~/.openclaw/openclaw.json`
-- Hooks dir: `<workspace>/hooks`
-- Memory dir: `<workspace>/memory`
-- Env file: `<workspace>/.env`
-
-Required files to create/update:
-
-- `<workspace>/hooks/mb-command-checkpoint.mjs`
-- `<workspace>/hooks/mb-preaction-enrich.mjs`
-- `<workspace>/hooks/mb-sector-router.mjs`
-- `<workspace>/hooks/mb-preaction-allowlist.json`
-
----
-
-## Step 1 — Install Mother Brain (if missing)
-
-Check:
-
-```bash
-command -v motherbrain >/dev/null 2>&1
+```
+┌─────────────────────────────────────────────┐
+│                  OpenClaw Agent              │
+│  (reads AGENTS.md → calls mb-recall/record) │
+└──────────┬──────────────────┬───────────────┘
+           │ recall           │ record
+           ▼                  ▼
+┌─────────────────────────────────────────────┐
+│           Mother Brain API (:7337)           │
+│  ┌─────────┐ ┌──────────┐ ┌──────────────┐ │
+│  │ SQLite  │ │ LanceDB  │ │ Checkpoints  │ │
+│  │ (runs,  │ │ (vectors │ │ (JSON files) │ │
+│  │  nodes) │ │  384-dim) │ │              │ │
+│  └─────────┘ └──────────┘ └──────────────┘ │
+│  Embeddings: Xenova/all-MiniLM-L6-v2 local  │
+└─────────────────────────────────────────────┘
 ```
 
-If missing, install:
+## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lucmousinho/mother-brain/main/install.sh | bash
+# Install Mother Brain CLI
+motherbrain self-update  # or download from GitHub releases
+
+# Initialize in your OpenClaw workspace
+cd ~/.openclaw/workspace
+motherbrain setup --with-token
+motherbrain init
 ```
 
-Then confirm:
+This creates:
+- `.env` with `MB_TOKEN`, `MB_API_PORT=7337`, `MB_RECALL_MODE=hybrid`
+- `motherbrain/` data directory (checkpoints, links, snapshots, tree)
+- `storage/` directory (SQLite DB, vector store, model cache)
+
+## Running the API
+
+### Manual
 
 ```bash
-motherbrain --version
-```
-
----
-
-## Step 2 — Initialize and run API
-
-Run idempotent setup:
-
-```bash
-motherbrain setup || motherbrain init
+cd ~/.openclaw/workspace
 motherbrain api start
 ```
 
-Health check:
+### As a systemd user service (recommended)
+
+Create `~/.config/systemd/user/motherbrain-openclaw.service`:
+
+```ini
+[Unit]
+Description=Mother Brain API for OpenClaw workspace
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/USER/.openclaw/workspace
+ExecStart=/home/USER/.local/bin/motherbrain api start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+```
+
+Then:
 
 ```bash
+systemctl --user daemon-reload
+systemctl --user enable --now motherbrain-openclaw.service
+```
+
+## Helper Scripts
+
+Create these in your workspace `scripts/` directory. They wrap the MB CLI/API for easy agent use.
+
+### scripts/mb-recall
+
+Search memory (hybrid keyword + semantic). Auto-detects context from keywords.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+Q="${1:-}"
+LIMIT="${2:-5}"
+CONTEXT="${MB_CONTEXT:-}"
+
+if [ -z "$Q" ]; then
+  echo "usage: mb-recall \"query\" [limit]" >&2
+  exit 1
+fi
+
+cd ~/.openclaw/workspace
+TOKEN="$(grep '^MB_TOKEN=' .env | cut -d= -f2- || true)"
+if [ -z "$TOKEN" ]; then
+  echo '{"error":"MB_TOKEN missing in .env"}'
+  exit 2
+fi
+
+# Auto-detect context from query keywords (customize these for your verticals)
+if [ -z "$CONTEXT" ]; then
+  Q_LOWER="$(echo "$Q" | tr '[:upper:]' '[:lower:]')"
+  case "$Q_LOWER" in
+    *health*|*hospital*|*clinic*) CONTEXT="healthtech" ;;
+    *game*|*gaming*|*unity*) CONTEXT="games" ;;
+    *education*|*school*|*lms*) CONTEXT="edtech" ;;
+    # Add your own verticals here
+  esac
+fi
+
+ENC_Q="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$Q")"
+URL="http://127.0.0.1:7337/recall?q=${ENC_Q}&mode=hybrid&limit=${LIMIT}"
+
+if [ -n "$CONTEXT" ]; then
+  ENC_CTX="$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$CONTEXT")"
+  URL="${URL}&context_id=${ENC_CTX}"
+fi
+
+curl -sS "$URL" -H "X-MB-TOKEN: $TOKEN"
+```
+
+### scripts/mb-record-action
+
+Record a completed action as a checkpoint. This is the primary way to persist what you did.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# mb-record-action "goal" "summary" "tag1,tag2" "command" "detail" [context]
+GOAL="${1:-}"
+SUMMARY="${2:-}"
+TAGS_RAW="${3:-openclaw}"
+COMMAND="${4:-manual action}"
+DETAIL="${5:-completed}"
+CONTEXT="${6:-${MB_CONTEXT:-}}"
+
+if [ -z "$GOAL" ] || [ -z "$SUMMARY" ]; then
+  echo "usage: mb-record-action \"goal\" \"summary\" [tags] [command] [detail] [context]" >&2
+  exit 1
+fi
+
+cd ~/.openclaw/workspace
+TOKEN="$(grep '^MB_TOKEN=' .env | cut -d= -f2- || true)"
+if [ -z "$TOKEN" ]; then
+  echo '{"error":"MB_TOKEN missing in .env"}'
+  exit 2
+fi
+
+NOW="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+TAG_JSON="$(python3 - <<'PY' "$TAGS_RAW"
+import json,sys
+print(json.dumps([t.strip() for t in sys.argv[1].split(',') if t.strip()]))
+PY
+)"
+
+TMP="$(mktemp)"
+cat > "$TMP" <<JSON
+{
+  "version": "v1",
+  "timestamp": "$NOW",
+  "agent": {"id": "openclaw-main", "name": "OpenClaw Agent", "session_id": "agent:main:main"},
+  "intent": {"goal": "$GOAL", "context": ["motherbrain", "auto-record"]},
+  "plan": [{"step": 1, "description": "$GOAL", "status": "done"}],
+  "actions": [{"type": "tool", "command": "$COMMAND", "detail": "$DETAIL", "timestamp": "$NOW"}],
+  "files_touched": [],
+  "artifacts": [],
+  "result": {"status": "success", "summary": "$SUMMARY"},
+  "constraints_applied": [],
+  "risk_flags": [],
+  "links": {"nodes": []},
+  "tags": $TAG_JSON
+}
+JSON
+
+CTX_FLAG=""
+[ -n "$CONTEXT" ] && CTX_FLAG="--context $CONTEXT"
+
+motherbrain record --file "$TMP" $CTX_FLAG
+rm -f "$TMP"
+```
+
+### scripts/mb-context-boot
+
+Quick context loader for session startup. Checks if MB is alive first.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+QUERY="${1:-recent work actions tasks completed}"
+LIMIT="${2:-5}"
+
+cd ~/.openclaw/workspace
+
+if ! curl -sf http://127.0.0.1:7337/health > /dev/null 2>&1; then
+  echo '{"status":"offline","message":"Mother Brain unavailable, use local files"}'
+  exit 0
+fi
+
+exec scripts/mb-recall "$QUERY" "$LIMIT"
+```
+
+### scripts/mb-daily-maintenance
+
+Daily compaction + snapshot. Run via cron or OpenClaw cron job.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd ~/.openclaw/workspace
+YESTERDAY="$(date -u -d 'yesterday' +%Y-%m-%d 2>/dev/null || date -u -v-1d +%Y-%m-%d)"
+
+echo "[$(date -u +%H:%M:%S)] Compacting $YESTERDAY..."
+motherbrain compact --day "$YESTERDAY" 2>&1 || echo "  compact: nothing to compact"
+
+echo "[$(date -u +%H:%M:%S)] Generating snapshot..."
+motherbrain snapshot 2>&1 || echo "  snapshot: error"
+
+echo "[$(date -u +%H:%M:%S)] Done."
+```
+
+Make all scripts executable:
+
+```bash
+chmod +x scripts/mb-recall scripts/mb-record-action scripts/mb-context-boot scripts/mb-daily-maintenance
+```
+
+## Memory Contexts (Scoped Memory)
+
+MB supports hierarchical memory scoping:
+
+```
+__global__              ← everything sees this
+├── healthtech          ← vertical (scope: vertical)
+│   └── drclick         ← project (scope: project, parent: healthtech)
+├── games               ← vertical
+│   └── mygame          ← project
+└── edtech              ← vertical
+```
+
+### Key behaviors
+
+- **Inheritance:** A project sees its own data + parent vertical + global
+- **Isolation:** Verticals don't see each other's data
+- **Global:** Sees everything (no filter)
+- **Auto-resolution:** Names and IDs both work (`--context games` or `--context ctx_vert_abc123`)
+
+### Creating contexts
+
+```bash
+# Create a vertical
+motherbrain context create --name healthtech --scope vertical
+
+# Create a project under a vertical
+motherbrain context create --name drclick --scope project --parent healthtech
+
+# Set active context (affects default scope for record/recall)
+motherbrain context use healthtech
+
+# List all
+motherbrain context list
+```
+
+### Using contexts in scripts
+
+```bash
+# Scoped recall
+MB_CONTEXT=games scripts/mb-recall "unity performance" 5
+
+# Scoped recording
+scripts/mb-record-action "Fix shader bug" "Fixed..." "games,unity" "..." "..." games
+```
+
+## AGENTS.md Integration
+
+Add this to your workspace `AGENTS.md` to make MB the priority context source:
+
+```markdown
+## Mother Brain (PRIORITY CONTEXT SOURCE)
+
+Mother Brain is your **primary long-term memory**. Local files are secondary.
+
+- API: `http://127.0.0.1:7337`
+- Service: `systemctl --user status motherbrain-openclaw.service`
+- Recall: `scripts/mb-recall "query" [limit]`
+- Record: `scripts/mb-record-action "goal" "summary" "tags" "command" "detail"`
+
+### 🔴 MANDATORY Protocol
+
+**On session start (first substantive message):**
+1. `mb-recall` with relevant topic — ALWAYS
+2. Use results to inform your response
+
+**After every significant action:**
+1. `mb-record-action` with goal, summary, tags — NO EXCEPTIONS
+2. Also update `memory/YYYY-MM-DD.md` as redundancy
+
+**When user references past work:**
+1. `mb-recall` BEFORE answering
+2. Search multiple queries if first doesn't match
+
+### Priority Order
+1. **Mother Brain** (structured, searchable, scoped) ← PRIMARY
+2. **memory/YYYY-MM-DD.md** (daily notes) ← REDUNDANCY
+3. **MEMORY.md** (curated) ← SUPPLEMENT
+
+### Safety
+- If MB unavailable, fall back to local files — don't block
+- Keep recording lightweight; skip for trivial chat-only turns
+```
+
+## API Reference
+
+Base URL: `http://127.0.0.1:7337`
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/health` | GET | Health check |
+| `/runs` | POST | Record a checkpoint |
+| `/recall?q=...` | GET | Hybrid recall (keyword + semantic) |
+| `/contexts` | GET | List contexts |
+| `/contexts` | POST | Create context |
+| `/contexts/current` | GET | Get active context |
+| `/contexts/current` | PUT | Set active context |
+| `/contexts/:id` | GET | Get context by ID |
+| `/nodes/upsert` | POST | Upsert knowledge node |
+| `/policy/check` | POST | Check action against policies |
+
+### Recall query params
+
+- `q` (required) — search query
+- `limit` — max results (default 10)
+- `mode` — `keyword`, `semantic`, or `hybrid`
+- `context_id` — scope to a context (name or ID)
+- `context_ids` — comma-separated for multi-scope
+- `tags` — comma-separated tag filter
+- `types` — comma-separated node type filter
+
+### Headers
+
+- `X-MB-TOKEN` — auth token (from `.env`)
+- `X-MB-Context` — context scope (alternative to body/query param)
+
+## CLI Commands
+
+```bash
+motherbrain recall "query" --limit 5 --mode hybrid --context games
+motherbrain record --file checkpoint.json --context healthtech
+motherbrain context create --name myproject --scope project --parent myvertical
+motherbrain context use myproject
+motherbrain context list
+motherbrain context current
+motherbrain compact --day 2026-02-18
+motherbrain snapshot
+motherbrain embed-model            # show embedding model info
+motherbrain self-update --check-only
+```
+
+## Troubleshooting
+
+**MB not responding:**
+```bash
+systemctl --user status motherbrain-openclaw.service
 curl -s http://127.0.0.1:7337/health
 ```
 
-Expected contains: `"status":"ok"`
-
-If token auth is enabled, read `MB_TOKEN` from `<workspace>/.env` and pass:
-
-```bash
-curl -s -H "X-MB-TOKEN: $MB_TOKEN" http://127.0.0.1:7337/health
-```
-
----
-
-## Step 3 — Create hook files (Level 3)
-
-### 3.1 `mb-command-checkpoint.mjs`
-
-Create/update a hook that listens to `event.type === "command"` and:
-
-- optionally recalls context from `/recall` (short timeout)
-- posts checkpoint to `/runs`
-- writes compact context cache in `<workspace>/memory/mb-last-context.json`
-- appends one line to `<workspace>/memory/YYYY-MM-DD.md`
-- never throws (silent fallback)
-
-### 3.2 `mb-preaction-enrich.mjs`
-
-Create/update a hook that listens to `event.type === "command"` and enriches before critical or allowlisted actions:
-
-- classify critical commands (config/update/restart/install/remove/delete/deploy/reset etc.)
-- read custom allowlist file `mb-preaction-allowlist.json`
-- modes:
-  - `allowlist-plus-critical`
-  - `allowlist-only`
-- call `/recall` with short timeout
-- persist compact context to `<workspace>/memory/mb-preaction-context.json`
-- append one line to `<workspace>/memory/YYYY-MM-DD.md`
-- optionally push concise context text to `event.messages`
-- never throws (silent fallback)
-
-### 3.3 `mb-preaction-allowlist.json`
-
-Create if missing:
-
-```json
-{
-  "enabled": true,
-  "mode": "allowlist-plus-critical",
-  "commands": [
-    "config.patch",
-    "config.apply",
-    "update.run",
-    "gateway.restart",
-    "gateway.stop",
-    "cron.add",
-    "cron.update",
-    "cron.remove",
-    "message.send",
-    "sessions_send",
-    "exec"
-  ],
-  "patterns": [
-    "deploy",
-    "migration",
-    "backup",
-    "payment",
-    "invoice",
-    "customer-data"
-  ]
-}
-```
-
-### 3.4 `mb-sector-router.mjs`
-
-Create/update a hook that classifies commands into domain sectors and records sector-scoped memory traces.
-
-Template source in this repository:
-
-- `templates/hooks/mb-sector-router.mjs`
-
-Runtime behavior:
-
-- detect sector from `memory/sector-router.json`
-- run recall with sector-aware query
-- write cache to `memory/mb-sector-context.json`
-- append summary to `memory/sectors/<sector>.md`
-- record run with tags like:
-  - `sector:marketing`
-  - `role:software-engineer-fullstack`
-- never block command execution on failures
-
----
-
-## Step 4 — Wire OpenClaw hooks config
-
-Ensure OpenClaw config includes:
-
-- `hooks.internal.enabled = true`
-- `hooks.internal.load.extraDirs` contains `<workspace>/hooks`
-- `hooks.internal.handlers` contains:
-  - `{ "event": "command", "module": "mb-command-checkpoint.mjs" }`
-  - `{ "event": "command", "module": "mb-preaction-enrich.mjs" }`
-  - `{ "event": "command", "module": "mb-sector-router.mjs" }`
-
-Important:
-
-- Keep existing handlers.
-- Add missing only (no duplicates).
-
-If `gateway` tool is available, use `config.patch`.
-Otherwise patch `~/.openclaw/openclaw.json` and restart gateway:
-
-```bash
-openclaw gateway restart
-```
-
----
-
-## Step 5 — Validation checklist
-
-Run all checks and report pass/fail:
-
-1. `motherbrain --version`
-2. `curl /health` returns `ok`
-3. Hook files exist in `<workspace>/hooks`
-4. OpenClaw config has both MB handlers
-5. Trigger a safe command event and verify no runtime error
-6. Confirm cache files can be written under `<workspace>/memory`
-
-Optional functional check:
-
-- Verify a new run appears from command hook after one command.
-
----
-
-## Step 6 — Completion message format
-
-Return concise summary including:
-
-- what was installed/updated
-- paths of created files
-- whether gateway restart happened
-- validation results
-- current mode from allowlist (`allowlist-plus-critical` or `allowlist-only`)
-
-If any step failed, provide exact failing command and a one-line fix.
-
----
-
-## Step 7 — Sector-based memory routing (by user intent)
-
-Add and use domain memory sectors so the agent recalls and records context by type of work.
-
-### 7.1 Sector mapping
-
-Use this default routing table (extendable):
-
-- Marketing / content / social / campaign / Instagram / ad copy
-  - sector: `marketing`
-  - role tag: `marketing`
-- Software / coding / refactor / bugfix / architecture / API / frontend / backend
-  - sector: `engineering-fullstack`
-  - role tag: `software-engineer-fullstack`
-- Sales / CRM / outreach / pipeline
-  - sector: `sales`
-  - role tag: `sales`
-- Finance / budget / invoice / cost / pricing
-  - sector: `finance`
-  - role tag: `finance`
-- Operations / SOP / process / automation runbooks
-  - sector: `operations`
-  - role tag: `operations`
-- Fallback for unknown tasks
-  - sector: `general`
-  - role tag: `generalist`
-
-### 7.2 Files to persist in workspace
-
-Create if missing:
-
-- `<workspace>/memory/sectors/marketing.md`
-- `<workspace>/memory/sectors/engineering-fullstack.md`
-- `<workspace>/memory/sectors/sales.md`
-- `<workspace>/memory/sectors/finance.md`
-- `<workspace>/memory/sectors/operations.md`
-- `<workspace>/memory/sectors/general.md`
-- `<workspace>/memory/sector-router.json`
-
-Default router file:
-
-```json
-{
-  "defaultSector": "general",
-  "routes": [
-    { "matchAny": ["instagram", "postagem", "campanha", "marketing", "social"], "sector": "marketing", "roleTag": "marketing" },
-    { "matchAny": ["software", "código", "api", "frontend", "backend", "refactor", "bug"], "sector": "engineering-fullstack", "roleTag": "software-engineer-fullstack" },
-    { "matchAny": ["vendas", "crm", "pipeline", "lead", "outreach"], "sector": "sales", "roleTag": "sales" },
-    { "matchAny": ["financeiro", "invoice", "fatura", "custo", "budget", "pricing"], "sector": "finance", "roleTag": "finance" },
-    { "matchAny": ["operações", "sop", "processo", "runbook", "automação"], "sector": "operations", "roleTag": "operations" }
-  ]
-}
-```
-
-### 7.3 Runtime behavior (mandatory)
-
-For each user request:
-
-1. Classify sector from user intent (`matchAny`, case-insensitive)
-2. Pre-action recall query must include sector context, for example:
-   - `"marketing instagram post"`
-   - `"engineering-fullstack refactor api"`
-3. Record checkpoints with sector tags:
-   - `tags` must include: `sector:<name>` and `role:<roleTag>`
-4. Append a human-readable log line into the sector file:
-   - `<workspace>/memory/sectors/<sector>.md`
-5. Keep non-blocking fallback if Mother Brain API is down
-
-### 7.4 Explicit examples
-
-- If user asks: “gerar uma postagem no Instagram”
-  - use `sector=marketing`
-  - recall from marketing context
-  - record run with `tags: ["sector:marketing", "role:marketing"]`
-  - append summary to `memory/sectors/marketing.md`
-
-- If user asks: “editar um projeto de software”
-  - use `sector=engineering-fullstack`
-  - recall from engineering context
-  - record run with `tags: ["sector:engineering-fullstack", "role:software-engineer-fullstack"]`
-  - append summary to `memory/sectors/engineering-fullstack.md`
-
----
-
-## Non-Blocking Reliability Rules
-
-Every hook must:
-
-- use short timeouts (`~1.8s` recall, `~2.5s` record)
-- swallow network errors
-- avoid crashing OpenClaw command flow
-
-If Mother Brain is down, OpenClaw must continue operating normally.
-
----
-
-## Notes for macOS/Linux
-
-- Shell commands are POSIX-compatible.
-- Paths must be absolute when writing hooks and config.
-- `~/.openclaw/openclaw.json` location is the same pattern on Linux/macOS.
-
----
-
-## One-Line Mission for the executing agent
-
-Implement Mother Brain integration end-to-end (install + hook wiring + validation) so the user can immediately use automatic recall/record in OpenClaw without manual follow-up.
+**Recall returns nothing:**
+- Check if data was actually recorded: `motherbrain recall "recent" --limit 20`
+- Check active context: `motherbrain context current`
+- Try without context scope to see all data
+
+**Context isolation not working:**
+- Verify context IDs (not names) are stored: check SQLite `runs` table
+- The name-vs-ID bug was fixed — ensure you're on latest version
+
+**Embeddings slow on first run:**
+- Model downloads on first use (~90MB for all-MiniLM-L6-v2)
+- Cached in `storage/models/` after first download
+
+## Design Principles
+
+1. **Local-first** — everything runs on your machine, no cloud dependency
+2. **Fail-open** — if MB is down, agents continue with local files
+3. **Record everything, recall what matters** — cheap writes, smart reads
+4. **Scope by default** — multi-tenant isolation prevents memory contamination
+5. **Redundancy** — MB is primary, local files are backup, not the other way around
