@@ -218,6 +218,12 @@ export function registerRoutes(app: FastifyInstance): void {
     Body: { day: string; context_id?: string };
   }>('/compact', async (request, reply) => {
     try {
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!request.body.day || !dateRegex.test(request.body.day)) {
+        return reply.code(400).send({ error: 'Invalid day format. Expected YYYY-MM-DD' });
+      }
+
       const contextId = request.body.context_id ?? extractContextFromRequest(request);
       const result = await compactDay(request.body.day, undefined, contextId);
       return reply.code(200).send(result);

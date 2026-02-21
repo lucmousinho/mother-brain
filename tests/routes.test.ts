@@ -1,6 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import Database from 'better-sqlite3';
 import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -54,8 +53,16 @@ describe('API routes', () => {
         url: '/runs',
         payload: {
           agent: { id: 'agent_01', name: 'Test Agent' },
-          intent: { goal: 'API test run' },
-          result: { status: 'success', summary: 'All good' },
+          intent: { 
+            goal: 'API test run with sufficient length for validation', 
+            summary: 'Testing API checkpoint recording functionality'
+          },
+          result: { 
+            status: 'success', 
+            summary: 'All good', 
+            output: 'Test completed successfully'
+          },
+          tags: ['test', 'api'],
         },
       });
       expect(res.statusCode).toBe(201);

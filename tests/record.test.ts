@@ -63,8 +63,9 @@ describe('recordCheckpoint', () => {
   it('should record a valid checkpoint', async () => {
     const input = {
       agent: { id: 'agent_01', name: 'Test' },
-      intent: { goal: 'Test recording' },
-      result: { status: 'success', summary: 'Tested' },
+      intent: { goal: 'Test recording', summary: 'Testing checkpoint recording' },
+      result: { status: 'success', summary: 'Tested', output: 'Test completed successfully' },
+      tags: ['test', 'recording'],
     };
 
     const result = await recordCheckpoint(input, testDb);
@@ -85,8 +86,9 @@ describe('recordCheckpoint', () => {
     const input = {
       run_id: 'run_custom123',
       agent: { id: 'agent_01', name: 'Test' },
-      intent: { goal: 'Custom ID' },
-      result: { status: 'success', summary: 'OK' },
+      intent: { goal: 'Custom ID test with enough chars', summary: 'Testing custom ID functionality' },
+      result: { status: 'success', summary: 'OK', output: 'Custom ID recorded' },
+      tags: ['test', 'custom-id'],
     };
 
     const result = await recordCheckpoint(input, testDb);
@@ -101,9 +103,10 @@ describe('recordCheckpoint', () => {
   it('should link nodes when provided', async () => {
     const input = {
       agent: { id: 'agent_01', name: 'Test' },
-      intent: { goal: 'With links' },
-      result: { status: 'success', summary: 'Linked' },
+      intent: { goal: 'Test with node links', summary: 'Testing node linking functionality' },
+      result: { status: 'success', summary: 'Linked', output: 'Nodes linked successfully' },
       links: { nodes: ['task_001', 'task_002'] },
+      tags: ['test', 'linking'],
     };
 
     const result = await recordCheckpoint(input, testDb);

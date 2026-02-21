@@ -11,6 +11,7 @@ export const AgentSchema = z.object({
 export const IntentSchema = z.object({
   goal: z.string().min(1),
   context: z.array(z.string()).default([]),
+  summary: z.string().optional(), // Optional summary for better recall
 });
 
 export const PlanStepSchema = z.object({
@@ -36,8 +37,10 @@ export const ArtifactSchema = z.object({
 });
 
 export const ResultSchema = z.object({
-  status: z.enum(['success', 'failure', 'partial', 'aborted']),
+  status: z.enum(['success', 'failure', 'partial', 'aborted', 'error']),
   summary: z.string(),
+  output: z.string().optional(), // Optional output for success status
+  error: z.string().optional(),  // Optional error details for failure/error status
 });
 
 export const LinksSchema = z.object({
@@ -75,6 +78,10 @@ export const NodeTypeEnum = z.enum([
   'constraint',
   'playbook',
   'agent',
+  // AIOS-inspired structured memory types
+  'insight',    // Discoveries during development/execution
+  'gotcha',     // Known pitfalls with solutions
+  'lesson',     // Lessons learned from experience
 ]);
 
 export const NodeSchema = z.object({
@@ -121,3 +128,48 @@ export const RecallRequestSchema = z.object({
 });
 
 export type RecallRequest = z.infer<typeof RecallRequestSchema>;
+
+// ── AIOS-Inspired Structured Memory Types ──────────────────────────
+
+/**
+ * Insight: Discoveries made during development/execution.
+ * Examples: "LanceDB requires parameterized queries", "TypeScript inference works better with explicit return types"
+ */
+export const InsightNodeSchema = NodeSchema.extend({
+  type: z.literal('insight'),
+  category: z.string().optional(), // e.g., 'architecture', 'performance', 'security'
+  discovered_at: z.string().optional(),
+  severity: z.enum(['low', 'medium', 'high']).optional().default('medium'),
+});
+
+export type InsightNode = z.infer<typeof InsightNodeSchema>;
+
+/**
+ * Gotcha: Known pitfalls with documented solutions.
+ * Examples: "snapshot.ts ignores scope → add context_id filter", "Promise.all fails fast → use allSettled"
+ */
+export const GotchaNodeSchema = NodeSchema.extend({
+  type: z.literal('gotcha'),
+  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  solution: z.string().min(1), // Required: how to avoid/fix this gotcha
+  occurrences: z.number().int().min(1).default(1),
+  last_seen: z.string().optional(),
+});
+
+export type GotchaNode = z.infer<typeof GotchaNodeSchema>;
+
+/**
+ * Lesson: Lessons learned from experience.
+ * Examples: "Always validate user input before DB queries", "Test edge cases first"
+ */
+export const LessonNodeSchema = NodeSchema.extend({
+  type: z.literal('lesson'),
+  context: z.string().optional(), // Context where lesson was learned
+  applicability: z.enum(['specific', 'general']).optional().default('general'),
+  learned_from: z.array(z.string()).default([]), // run_ids where lesson originated
+});
+
+export type LessonNode = z.infer<typeof LessonNodeSchema>;
+
+// Helper type for all specialized node types
+export type SpecializedNode = InsightNode | GotchaNode | LessonNode;

@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync, writeSync, unlinkSync, readFileSync, openSync, closeSync, constants } from 'node:fs';
+import { mkdirSync, writeSync, unlinkSync, readFileSync, openSync, closeSync, constants } from 'node:fs';
 import { join } from 'node:path';
 import { getLocksDir } from './paths.js';
 

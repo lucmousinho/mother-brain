@@ -1,6 +1,6 @@
 import { Command, Flags } from '@oclif/core';
-import { copyFileSync, existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { initProject } from '../../core/init.js';
@@ -105,13 +105,12 @@ export default class Setup extends Command {
     }
 
     // Detect git
-    let isGit = false;
     try {
       execSync('git rev-parse --is-inside-work-tree', {
         cwd: root,
         stdio: 'pipe',
       });
-      isGit = true;
+      // Git repository detected
       this.log('     Git repository detected.');
     } catch {
       this.log('     Not a git repository (optional).');

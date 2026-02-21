@@ -105,7 +105,7 @@ export interface HealthResponse {
 export interface RecordCheckpointPayload {
   version?: string;
   agent: { id: string; name: string; session_id?: string };
-  intent: { goal: string; context?: string[] };
+  intent: { goal: string; context?: string[]; summary?: string };
   plan?: Array<{ step: number; description: string; status?: string }>;
   actions?: Array<{
     type: string;
@@ -117,7 +117,12 @@ export interface RecordCheckpointPayload {
   }>;
   files_touched?: string[];
   artifacts?: Array<{ type: string; path?: string; content?: string; url?: string }>;
-  result: { status: 'success' | 'failure' | 'partial' | 'aborted'; summary: string };
+  result: { 
+    status: 'success' | 'failure' | 'partial' | 'aborted' | 'error'; 
+    summary: string;
+    output?: string;
+    error?: string;
+  };
   constraints_applied?: string[];
   risk_flags?: string[];
   links?: { nodes?: string[] };

@@ -40,6 +40,12 @@ export function openClawToCheckpoint(event: OpenClawEvent): Omit<RunCheckpoint, 
     result: {
       status: event.action.result?.toLowerCase().includes('error') ? 'failure' : 'success',
       summary: event.action.result || 'Completed',
+      output: event.action.result?.toLowerCase().includes('error') 
+        ? undefined 
+        : (event.action.result || 'Action completed successfully'),
+      error: event.action.result?.toLowerCase().includes('error') 
+        ? event.action.result 
+        : undefined,
     },
     constraints_applied: [],
     risk_flags: [],

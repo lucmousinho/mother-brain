@@ -1,6 +1,6 @@
 import { platform, arch } from 'node:os';
 import { execSync } from 'node:child_process';
-import { existsSync, readlinkSync, realpathSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 

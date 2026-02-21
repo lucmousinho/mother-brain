@@ -8,6 +8,7 @@ import { getDb } from '../db/database.js';
 import { withLock } from '../utils/filelock.js';
 import { indexRunVector } from './vectorIndex.js';
 import { resolveContext, resolveContextId } from './context/context.resolver.js';
+import { CheckpointValidator } from './checkpoint.validator.js';
 
 export interface RecordResult {
   run_id: string;
@@ -21,6 +22,21 @@ export async function recordCheckpoint(
   contextId?: string,
 ): Promise<RecordResult> {
   const parsed = RunCheckpointSchema.parse(input);
+
+  // Self-critique: validate checkpoint before persisting
+  const validator = new CheckpointValidator();
+  const validationResult = validator.validate(parsed);
+
+  if (!validationResult.valid) {
+    throw new Error(
+      `Checkpoint validation failed:\n${validator.formatResult(validationResult)}`
+    );
+  }
+
+  // Log warnings (non-blocking)
+  if (validationResult.warnings.length > 0) {
+    console.warn('[mother-brain] Checkpoint warnings:', validator.formatResult(validationResult));
+  }
 
   const now = new Date();
   if (!parsed.run_id) parsed.run_id = generateRunId();

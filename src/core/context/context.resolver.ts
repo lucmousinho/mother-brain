@@ -14,7 +14,7 @@ function getActiveContextPath(): string {
 
 export function resolveContext(
   explicitId?: string,
-  db?: Database.Database,
+  _db?: Database.Database,
 ): string {
   // 1. Explicit ID takes priority
   if (explicitId) return explicitId;

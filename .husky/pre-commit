@@ -1,0 +1,20 @@
+# Quality Gate Layer 1: Pre-commit (local, fast ~5s)
+# Validates code quality and type safety before commit
+
+echo "🔍 Running pre-commit checks..."
+
+# ESLint - Code quality
+echo "  → Linting..."
+pnpm run lint || {
+  echo "❌ Lint failed. Fix errors before committing."
+  exit 1
+}
+
+# TypeScript - Type checking via build
+echo "  → Type checking..."
+pnpm run build || {
+  echo "❌ Type check failed. Fix type errors before committing."
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed!"

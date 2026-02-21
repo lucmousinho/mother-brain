@@ -1,0 +1,20 @@
+# Quality Gate Layer 2: Pre-push (local, ~30s)
+# Validates tests and security before pushing
+
+echo "🔬 Running pre-push checks..."
+
+# Run all tests
+echo "  → Running tests..."
+pnpm run test || {
+  echo "❌ Tests failed. Fix failing tests before pushing."
+  exit 1
+}
+
+# Security scan (placeholder - can add npm audit or similar)
+echo "  → Security scan..."
+# pnpm audit --production || {
+#   echo "⚠️  Security vulnerabilities found. Review before pushing."
+#   # Don't block push, just warn
+# }
+
+echo "✅ Pre-push checks passed!"

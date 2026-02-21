@@ -2,7 +2,6 @@ import { Command } from '@oclif/core';
 import { isInitialized } from '../../../utils/paths.js';
 import { getActiveContext, getAncestorChain } from '../../../core/context/context.resolver.js';
 import { getContext } from '../../../core/context/context.manager.js';
-import { GLOBAL_CONTEXT_ID } from '../../../core/context/context.types.js';
 
 export default class ContextCurrent extends Command {
   static override description = 'Show the current active memory context and its inheritance chain.';
